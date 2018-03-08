@@ -45,7 +45,7 @@ class NarrowTransactionGenerator(settings: Settings, val accounts: Seq[PrivateKe
       .selfSigned(
         issueTransactionSender,
         "TRADE".getBytes,
-        "TurtleNode DEX is the best exchange ever".getBytes,
+        "TN DEX is the best exchange ever".getBytes,
         100000000,
         2,
         reissuable = false,

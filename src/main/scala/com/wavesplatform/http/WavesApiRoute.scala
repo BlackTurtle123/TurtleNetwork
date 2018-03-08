@@ -14,6 +14,7 @@ import com.wavesplatform.wallet.Wallet
 
 @Path("/TN")
 @Api(value = "TN")
+
 @Deprecated
 case class WavesApiRoute(settings: RestAPISettings, wallet: Wallet, utx: UtxPool, allChannels: ChannelGroup, time: Time)
     extends ApiRoute

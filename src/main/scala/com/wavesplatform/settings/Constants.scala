@@ -12,5 +12,4 @@ object Constants extends ScorexLogging {
 
   val UnitsInWave = 100000000L
   val TotalWaves  = 100000000L
-
 }

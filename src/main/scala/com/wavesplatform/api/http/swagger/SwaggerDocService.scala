@@ -12,11 +12,10 @@ class SwaggerDocService(val actorSystem: ActorSystem, val materializer: ActorMat
     extends SwaggerHttpService {
 
   override val host: String = settings.bindAddress + ":" + settings.port
-  override val info: Info = Info(
-    "The Web Interface to the TurtleNode Full Node API",
+  override val info: Info = Info("The Web Interface to the TN Full Node API",
     Version.VersionString,
-    "TurtleNode Full Node",
-    "License: MIT License",
+    "TN Full Node",
+    "License: Apache License, Version 2.0",
     None,
     Some(License("MIT License", "https://github.com/BlackTurtle123/TurtleNetwork/blob/master/LICENSE"))
   )

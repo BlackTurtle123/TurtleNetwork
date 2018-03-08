@@ -50,19 +50,19 @@ case class FunctionalitySettings(featureCheckBlocksPeriod: Int,
 
 object FunctionalitySettings {
   val MAINNET = apply(
-    featureCheckBlocksPeriod = 2000,
-    blocksForFeatureActivation = 1000,
-    allowTemporaryNegativeUntil = 0L,
-    generationBalanceDepthFrom50To1000AfterHeight = 0,
-    minimalGeneratingBalanceAfter = 0L,
-    allowTransactionsFromFutureUntil = 0L,
-    allowUnissuedAssetsUntil = 0L,
-    allowInvalidReissueInSameBlockUntilTimestamp = 0L,
-    allowMultipleLeaseCancelTransactionUntilTimestamp = 0L,
+    featureCheckBlocksPeriod = 5000,
+    blocksForFeatureActivation = 4000,
+    allowTemporaryNegativeUntil = 1479168000000L,
+    generationBalanceDepthFrom50To1000AfterHeight = 232000,
+    minimalGeneratingBalanceAfter = 1479168000000L,
+    allowTransactionsFromFutureUntil = 1479168000000L,
+    allowUnissuedAssetsUntil = 1479416400000L,
+    allowInvalidReissueInSameBlockUntilTimestamp = 1492768800000L,
+    allowMultipleLeaseCancelTransactionUntilTimestamp = 1492768800000L,
     resetEffectiveBalancesAtHeight = 1,
     blockVersion3AfterHeight = 0,
     preActivatedFeatures = Map.empty,
-    doubleFeaturesPeriodsAfterHeight = 810000,
+    doubleFeaturesPeriodsAfterHeight = 0,
     maxTransactionTimeBackOffset = 120.minutes,
     maxTransactionTimeForwardOffset = 90.minutes
   )
@@ -119,7 +119,9 @@ object GenesisSettings {
   val TESTNET = GenesisSettings(
     1460678400000L,
     1478000000000L,
-    50000000000000000l,
+    Constants.UnitsInWave * Constants.TotalWaves,
+
+
     ByteStr.decodeBase58("5uqnLK3Z9eiot6FyYBfwUnbyid3abicQbAZjz38GQ1Q8XigQMxTK4C1zNkqS1SVw7FqSidbZKxWAKLVoEsp4nNqa").toOption,
     List(
       GenesisTransactionSettings("3My3KZgFQ3CrVHgz6vGRt8687sH4oAA1qp8", (50000000000000000L * 0.04).toLong),

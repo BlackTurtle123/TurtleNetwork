@@ -45,7 +45,8 @@ object Node {
 
     def publicKeyStr = Base58.encode(n.publicKey.publicKey)
 
-    def fee(txTypeId: Byte): Long = CommonValidation.FeeConstants(txTypeId) * CommonValidation.FeeUnit
+    def fee(txValue: TransactionType.Value, asset: String = "TN"): Long
+     = n.settings.feesSettings.fees(txValue.id).find(_.asset == asset).get.fee
 
     def blockDelay: FiniteDuration = n.settings.blockchainSettings.genesisSettings.averageBlockDelay
   }
