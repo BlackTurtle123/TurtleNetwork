@@ -69,15 +69,14 @@ class BlockchainSettingsSpecification extends FlatSpec with Matchers {
     settings.functionalitySettings.blockVersion3AfterHeight should be(18)
     settings.functionalitySettings.preActivatedFeatures should be(Map(5 -> 0, 1 -> 0, 6 -> 0, 2 -> 0, 3 -> 0))
     settings.functionalitySettings.doubleFeaturesPeriodsAfterHeight should be(21)
-    settings.functionalitySettings.maxTransactionTimeBackOffset should be(55.seconds)
-    settings.functionalitySettings.maxTransactionTimeForwardOffset should be(12.days)
-    settings.genesisSettings.blockTimestamp should be(1460678400000L)
-    settings.genesisSettings.timestamp should be(1460678400000L)
+    settings.genesisSettings.blockTimestamp should be(1517503972000L)
+    settings.genesisSettings.timestamp should be(1517503972000L)
     settings.genesisSettings.signature should be(ByteStr.decodeBase58("BASE58BLKSGNATURE").toOption)
     settings.genesisSettings.initialBalance should be(50000000000000000L)
     settings.genesisSettings.initialBaseTarget should be(153722867)
     settings.genesisSettings.averageBlockDelay should be(60.seconds)
-    settings.genesisSettings.transactions should be(Seq(GenesisTransactionSettings("BASE58ADDRESS1", 50000000000000000L)))
+    settings.genesisSettings.transactions should be(Seq(
+      GenesisTransactionSettings("BASE58ADDRESS1", 50000000000000000L)))
   }
 
   it should "read testnet settings" in {
@@ -105,18 +104,15 @@ class BlockchainSettingsSpecification extends FlatSpec with Matchers {
     settings.functionalitySettings.maxTransactionTimeForwardOffset should be(90.minutes)
     settings.genesisSettings.blockTimestamp should be(1460678400000L)
     settings.genesisSettings.timestamp should be(1478000000000L)
-    settings.genesisSettings.signature should be(
-      ByteStr.decodeBase58("5uqnLK3Z9eiot6FyYBfwUnbyid3abicQbAZjz38GQ1Q8XigQMxTK4C1zNkqS1SVw7FqSidbZKxWAKLVoEsp4nNqa").toOption)
+    settings.genesisSettings.signature should be(ByteStr.decodeBase58("5uqnLK3Z9eiot6FyYBfwUnbyid3abicQbAZjz38GQ1Q8XigQMxTK4C1zNkqS1SVw7FqSidbZKxWAKLVoEsp4nNqa").toOption)
     settings.genesisSettings.initialBalance should be(50000000000000000L)
 
-    settings.genesisSettings.transactions should be(
-      Seq(
-        GenesisTransactionSettings("3My3KZgFQ3CrVHgz6vGRt8687sH4oAA1qp8", 2000000000000000L),
-        GenesisTransactionSettings("3NBVqYXrapgJP9atQccdBPAgJPwHDKkh6A8", 1000000000000000L),
-        GenesisTransactionSettings("3N5GRqzDBhjVXnCn44baHcz2GoZy5qLxtTh", 1000000000000000L),
-        GenesisTransactionSettings("3NCBMxgdghg4tUhEEffSXy11L6hUi6fcBpd", 1000000000000000L),
-        GenesisTransactionSettings("3N18z4B8kyyQ96PhN5eyhCAbg4j49CgwZJx", 45000000000000000L)
-      ))
+    settings.genesisSettings.transactions should be(Seq(
+      GenesisTransactionSettings("3My3KZgFQ3CrVHgz6vGRt8687sH4oAA1qp8",2000000000000000L),
+      GenesisTransactionSettings("3NBVqYXrapgJP9atQccdBPAgJPwHDKkh6A8",1000000000000000L),
+      GenesisTransactionSettings("3N5GRqzDBhjVXnCn44baHcz2GoZy5qLxtTh",1000000000000000L),
+      GenesisTransactionSettings("3NCBMxgdghg4tUhEEffSXy11L6hUi6fcBpd",1000000000000000L),
+      GenesisTransactionSettings("3N18z4B8kyyQ96PhN5eyhCAbg4j49CgwZJx",45000000000000000L)))
   }
 
   it should "read mainnet settings" in {
