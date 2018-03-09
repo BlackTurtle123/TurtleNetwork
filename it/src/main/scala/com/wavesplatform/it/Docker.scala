@@ -80,6 +80,23 @@ class Docker(suiteConfig: Config = empty, tag: String = "", enableProfiling: Boo
     r
   }
 
+  private val profilerController: Coeval[Option[File]] = Coeval.evalOnce {
+    if (enableProfiling) {
+      Option(System.getProperty("TN.profiling.yourKitDir")) match {
+        case None =>
+          throw new IllegalStateException("Can't enable profiling, because there is no property 'TN.profiling.yourKitDir'!")
+
+        case Some(yourKitDir) =>
+          val controller = Paths.get(yourKitDir, "yjp-controller-api-redist.jar").toFile
+          if (controller.isFile) Some(controller)
+          else {
+            log.warn(s"Can't enable profiling, because '$controller' is not a file")
+            None
+          }
+      }
+    } else None
+  }
+
   private def ipForNode(nodeId: Int) = InetAddress.getByAddress(toByteArray(nodeId & 0xF | networkSeed)).getHostAddress
 
   private lazy val wavesNetwork: Network = {
@@ -190,29 +207,24 @@ class Docker(suiteConfig: Config = empty, tag: String = "", enableProfiling: Boo
         .map(_ => ())
   }
 
+  private def startNodeInternal(nodeConfig: Config): DockerNode = try {
+    val actualConfig = nodeConfig
+      .withFallback(suiteConfig)
+      .withFallback(NodeConfigs.DefaultConfigTemplate)
+      .withFallback(ConfigFactory.defaultApplication())
+      .withFallback(ConfigFactory.defaultReference())
+      .resolve()
 
-  private def startNodeInternal(nodeConfig: Config): DockerNode =
-    try {
-      val overrides = nodeConfig
-        .withFallback(suiteConfig)
-        .withFallback(genesisOverride)
+    val restApiPort = actualConfig.getString("TN.rest-api.port")
+    val networkPort = actualConfig.getString("TN.network.port")
+    val matcherApiPort = actualConfig.getString("TN.matcher.port")
 
-      val actualConfig = overrides
-        .withFallback(configTemplate)
-        .withFallback(defaultApplication())
-        .withFallback(defaultReference())
-        .resolve()
-
-      val restApiPort    = actualConfig.getString("TN.rest-api.port")
-      val networkPort    = actualConfig.getString("TN.network.port")
-      val matcherApiPort = actualConfig.getString("TN.matcher.port")
-
-      val portBindings = new ImmutableMap.Builder[String, java.util.List[PortBinding]]()
-        .put(s"$ProfilerPort", singletonList(PortBinding.randomPort("0.0.0.0")))
-        .put(restApiPort, singletonList(PortBinding.randomPort("0.0.0.0")))
-        .put(networkPort, singletonList(PortBinding.randomPort("0.0.0.0")))
-        .put(matcherApiPort, singletonList(PortBinding.randomPort("0.0.0.0")))
-        .build()
+    val portBindings = new ImmutableMap.Builder[String, java.util.List[PortBinding]]()
+      .put(s"$ProfilerPort", singletonList(PortBinding.randomPort("0.0.0.0")))
+      .put(restApiPort, singletonList(PortBinding.randomPort("0.0.0.0")))
+      .put(networkPort, singletonList(PortBinding.randomPort("0.0.0.0")))
+      .put(matcherApiPort, singletonList(PortBinding.randomPort("0.0.0.0")))
+      .build()
 
       val hostConfig = HostConfig
         .builder()
@@ -229,17 +241,34 @@ class Docker(suiteConfig: Config = empty, tag: String = "", enableProfiling: Boo
 
         var config = s"$javaOptions ${renderProperties(asProperties(overrides))} " +
           s"-Dlogback.stdout.level=TRACE -Dlogback.file.level=OFF -DTN.network.declared-address=$ip:$networkPort $ntpServer"
+    val nodeName = actualConfig.getString("TN.network.node-name")
+    val nodeNumber = nodeName.replace("node", "").toInt
+    val ip = ipForNode(nodeNumber)
 
+    val javaOptions = Option(System.getenv("CONTAINER_JAVA_OPTS")).getOrElse("")
+    val configOverrides = {
+      val common = s"$javaOptions ${renderProperties(asProperties(nodeConfig.withFallback(suiteConfig)))} " +
+        s"-Dlogback.stdout.level=TRACE -Dlogback.file.level=OFF -DTN.network.declared-address=$ip:$networkPort"
+
+      val additional = profilerController().fold("") { _ =>
+        s"-agentpath:$ContainerRoot/libyjpagent.so=listen=0.0.0.0:$ProfilerPort," +
+          s"sampling,monitors,sessionname=TNNode,dir=$ContainerRoot/profiler,logdir=$ContainerRoot"
+      }
 
         if (enableProfiling) {
           config += s"-agentpath:/usr/local/YourKit-JavaProfiler-2018.04/bin/linux-x86-64/libyjpagent.so=port=$ProfilerPort,listen=all," +
             s"sampling,monitors,sessionname=TNNode,dir=$ContainerRoot/profiler,logdir=$ContainerRoot "
         }
 
-        val withAspectJ = Option(System.getenv("WITH_ASPECTJ")).fold(false)(_.toBoolean)
-        if (withAspectJ) config += s"-javaagent:$ContainerRoot/aspectjweaver.jar "
-        config
-      }
+    val containerConfig = ContainerConfig.builder()
+      .image("com.wavesplatform/it:latest")
+      .exposedPorts(s"$ProfilerPort", restApiPort, networkPort, matcherApiPort)
+      .networkingConfig(ContainerConfig.NetworkingConfig.create(Map(
+        wavesNetwork.name() -> endpointConfigFor(nodeName)
+      ).asJava))
+      .hostConfig(hostConfig)
+      .env(s"TN_OPTS=$configOverrides")
+      .build()
 
       val containerConfig = ContainerConfig
         .builder()
@@ -581,30 +610,10 @@ class Docker(suiteConfig: Config = empty, tag: String = "", enableProfiling: Boo
 }
 
 object Docker {
-  private val ContainerRoot      = Paths.get("/opt/TN")
-  private val ProfilerController = ContainerRoot.resolve("yjp-controller-api-redist.jar")
-  private val ProfilerPort       = 10001
-  private val jsonMapper         = new ObjectMapper
-  private val propsMapper        = new JavaPropsMapper
-
-  val configTemplate = parseResources("template.conf")
-  def genesisOverride = {
-    val genesisTs          = System.currentTimeMillis()
-    val timestampOverrides = parseString(s"""waves.blockchain.custom.genesis {
-                                            |  timestamp = $genesisTs
-                                            |  block-timestamp = $genesisTs
-                                            |}""".stripMargin)
-
-    val genesisConfig    = configTemplate.withFallback(timestampOverrides)
-    val gs               = genesisConfig.as[GenesisSettings]("waves.blockchain.custom.genesis")
-    val genesisSignature = Block.genesis(gs).explicitGet().uniqueId
-
-    timestampOverrides.withFallback(parseString(s"waves.blockchain.custom.genesis.signature = $genesisSignature"))
-  }
-
-  AddressScheme.current = new AddressScheme {
-    override val chainId = configTemplate.as[String]("waves.blockchain.custom.address-scheme-character").charAt(0).toByte
-  }
+  private val ProfilerPort = 10001
+  private val ContainerRoot = Paths.get("/opt/TN")
+  private val jsonMapper = new ObjectMapper
+  private val propsMapper = new JavaPropsMapper
 
   def apply(owner: Class[_]): Docker = new Docker(tag = owner.getSimpleName)
 

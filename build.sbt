@@ -38,7 +38,7 @@ val versionSource = Def.task {
 val network = SettingKey[Network]("network")
 network := { Network(sys.props.get("network")) }
 name := "TN"
-normalizedName := s"${name.value}${network.value.packageSuffix}"
+normalizedName := network.value.name
 
 git.useGitDescribe := true
 git.uncommittedSignifier := Some("DIRTY")
@@ -76,95 +76,59 @@ val aopMerge: MergeStrategy = new MergeStrategy {
   import scala.xml._
   import scala.xml.dtd._
 
-  def apply(tempDir: File, path: String, files: Seq[File]): Either[String, Seq[(File, String)]] = {
-    val dt                         = DocType("aspectj", PublicID("-//AspectJ//DTD//EN", "http://www.eclipse.org/aspectj/dtd/aspectj.dtd"), Nil)
-    val file                       = MergeStrategy.createMergeTarget(tempDir, path)
-    val xmls: Seq[Elem]            = files.map(XML.loadFile)
-    val aspectsChildren: Seq[Node] = xmls.flatMap(_ \\ "aspectj" \ "aspects" \ "_")
-    val weaverChildren: Seq[Node]  = xmls.flatMap(_ \\ "aspectj" \ "weaver" \ "_")
-    val options: String            = xmls.map(x => (x \\ "aspectj" \ "weaver" \ "@options").text).mkString(" ").trim
-    val weaverAttr                 = if (options.isEmpty) Null else new UnprefixedAttribute("options", options, Null)
-    val aspects                    = new Elem(null, "aspects", Null, TopScope, false, aspectsChildren: _*)
-    val weaver                     = new Elem(null, "weaver", weaverAttr, TopScope, false, weaverChildren: _*)
-    val aspectj                    = new Elem(null, "aspectj", Null, TopScope, false, aspects, weaver)
-    XML.save(file.toString, aspectj, "UTF-8", xmlDecl = false, dt)
-    IO.append(file, IO.Newline.getBytes(IO.defaultCharset))
-    Right(Seq(file -> path))
+inTask(assembly)(Seq(
+  test := {},
+  assemblyJarName := s"TN-all-${version.value}.jar",
+  assemblyMergeStrategy := {
+    case PathList("META-INF", "io.netty.versions.properties") => MergeStrategy.concat
+    case other => (assemblyMergeStrategy in assembly).value(other)
   }
-}
+))
 
-inTask(assembly)(
-  Seq(
-    test := {},
-    assemblyJarName := s"TN-all-${version.value}.jar",
-    assemblyMergeStrategy := {
-      case PathList("META-INF", "io.netty.versions.properties") => MergeStrategy.concat
-      case PathList("META-INF", "aop.xml")                      => aopMerge
-      case other                                                => (assemblyMergeStrategy in assembly).value(other)
-    }
-  ))
+inConfig(Compile)(Seq(
+  mainClass := Some("com.wavesplatform.Application"),
+  publishArtifact in packageDoc := false,
+  publishArtifact in packageSrc := false,
+  sourceGenerators += versionSource
+))
 
-inConfig(Compile)(
-  Seq(
-    mainClass := Some("com.wavesplatform.Application"),
-    publishArtifact in packageDoc := false,
-    publishArtifact in packageSrc := false,
-    sourceGenerators += versionSource
-  ))
+inConfig(Test)(Seq(
+  logBuffered := false,
+  parallelExecution := false,
+  testOptions += Tests.Argument("-oIDOF", "-u", "target/test-reports"),
+  testOptions += Tests.Setup(_ => sys.props("sbt-testing") = "true")
+))
 
-inConfig(Test)(
-  Seq(
-    logBuffered := false,
-    parallelExecution := false,
-    testOptions += Tests.Argument("-oIDOF", "-u", "target/test-reports"),
-    testOptions += Tests.Setup(_ => sys.props("sbt-testing") = "true")
-  ))
+inConfig(Linux)(Seq(
+  maintainer := "TNplatform.com",
+  packageSummary := "TN node",
+  packageDescription := "TN node"
+))
 
-inConfig(Linux)(
-  Seq(
-    maintainer := "blackturtle.eu",
-    packageSummary := "TN node",
-    packageDescription := "TN node"
-  ))
+inConfig(Universal)(Seq(
+  mappings += (baseDirectory.value / s"TN-${network.value}.conf" -> "doc/waves.conf.sample"),
+  javaOptions ++= Seq(
+    // -J prefix is required by the bash script
+    "-J-server",
+    // JVM memory tuning for 2g ram
+    "-J-Xms128m",
+    "-J-Xmx2g",
+    "-J-XX:+ExitOnOutOfMemoryError",
+    // Java 9 support
+    "-J-XX:+IgnoreUnrecognizedVMOptions",
+    "-J--add-modules=java.xml.bind",
 
-bashScriptExtraDefines += s"""addJava "-DTN.directory=/var/lib/${normalizedName.value}""""
+    // from https://groups.google.com/d/msg/akka-user/9s4Yl7aEz3E/zfxmdc0cGQAJ
+    "-J-XX:+UseG1GC",
+    "-J-XX:+UseNUMA",
+    "-J-XX:+AlwaysPreTouch",
 
-val linuxScriptPattern = "bin/(.+)".r
-val batScriptPattern   = "bin/([^.]+)\\.bat".r
-
-inConfig(Universal)(
-  Seq(
-    mappings += (baseDirectory.value / s"TN-${network.value}.conf" -> "doc/TN.conf.sample"),
-    mappings := {
-      val scriptSuffix = network.value.packageSuffix
-      mappings.value.map {
-        case m @ (file, batScriptPattern(script)) =>
-          if (script.endsWith(scriptSuffix)) m else (file, s"bin/$script$scriptSuffix.bat")
-        case m @ (file, linuxScriptPattern(script)) =>
-          if (script.endsWith(scriptSuffix)) m else (file, s"bin/$script$scriptSuffix")
-        case other => other
-      }
-    },
-    javaOptions ++= Seq(
-      // -J prefix is required by the bash script
-      "-J-server",
-      // JVM memory tuning for 2g ram
-      "-J-Xms1024m",
-      "-J-Xmx4g",
-      "-J-XX:+ExitOnOutOfMemoryError",
-      // Java 9 support
-      "-J-XX:+IgnoreUnrecognizedVMOptions",
-      "-J--add-modules=java.xml.bind",
-      // from https://groups.google.com/d/msg/akka-user/9s4Yl7aEz3E/zfxmdc0cGQAJ
-      "-J-XX:+UseG1GC",
-      "-J-XX:+UseNUMA",
-      "-J-XX:+AlwaysPreTouch",
-      // probably can't use these with jstack and others tools
-      "-J-XX:+PerfDisableSharedMem",
-      "-J-XX:+ParallelRefProcEnabled",
-      "-J-XX:+UseStringDeduplication"
-    )
-  ))
+    // probably can't use these with jstack and others tools
+    "-J-XX:+PerfDisableSharedMem",
+    "-J-XX:+ParallelRefProcEnabled",
+    "-J-XX:+UseStringDeduplication"
+  )
+))
 
 val packageSource = Def.setting {
   sourceDirectory.value / "package"

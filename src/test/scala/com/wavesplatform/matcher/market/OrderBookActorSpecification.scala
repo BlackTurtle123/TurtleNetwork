@@ -29,6 +29,39 @@ class OrderBookActorSpecification extends MatcherSpec("OrderBookActor") with NTP
   private val txFactory                                        = new ExchangeTransactionCreator(EmptyBlockchain, MatcherAccount, matcherSettings, ntpTime).createTransaction _
   private val obc                                              = new ConcurrentHashMap[AssetPair, OrderBook]
   private val md                                               = new ConcurrentHashMap[AssetPair, MarketStatus]
+  var eventsProbe = TestProbe()
+
+  val pair = AssetPair(Some(ByteStr("BTC".getBytes)), Some(ByteStr("TN".getBytes)))
+  val storedState: SnapshotStateReader = stub[SnapshotStateReader]
+  val hugeAmount = Long.MaxValue / 2
+  (storedState.accountPortfolio _).when(*).returns(Portfolio(hugeAmount, LeaseInfo.empty, Map(
+    ByteStr("BTC".getBytes) -> hugeAmount,
+    ByteStr("TN".getBytes) -> hugeAmount
+  )))
+  val issueTransaction: IssueTransaction = IssueTransaction.create(
+    PrivateKeyAccount("123".getBytes),
+    "MinerReward".getBytes,
+    Array.empty,
+    10000000000L,
+    8.toByte,
+    true,
+    100000L,
+    10000L).right.get
+
+  (storedState.transactionInfo _).when(*).returns(Some((1, Some(issueTransaction))))
+
+  val settings = matcherSettings.copy(account = MatcherAccount.address)
+
+  val wallet = Wallet(WalletSettings(None, "matcher", Some(WalletSeed)))
+  wallet.generateNewAccount()
+
+  val orderHistoryRef = TestActorRef(new Actor {
+    def receive: Receive = {
+      case ValidateOrder(o, _) => sender() ! ValidateOrderResult(Right(o))
+      case _ =>
+    }
+  })
+
   private def update(ap: AssetPair)(snapshot: OrderBook): Unit = obc.put(ap, snapshot)
 
   private def getOrders(actor: ActorRef) = {

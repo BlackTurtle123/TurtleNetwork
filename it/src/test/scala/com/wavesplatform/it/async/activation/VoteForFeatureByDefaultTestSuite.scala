@@ -1,4 +1,6 @@
-package com.wavesplatform.it.async.activation
+
+package com.wavesplatform.it
+package activation
 
 import com.typesafe.config.Config
 import com.wavesplatform.features.BlockchainFeatureStatus
@@ -12,24 +14,18 @@ import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 
-class VoteForFeatureByDefaultTestSuite
-    extends FreeSpec
-    with Matchers
-    with CancelAfterFailure
-    with NodesFromDocker
-    with ActivationStatusRequest
-    with ReportingTestName {
 
-  private val votingInterval                 = 25
-  private val blocksForActivation            = 18
+class VoteForFeatureByDefaultTestSuite extends FreeSpec with Matchers with CancelAfterFailure with NodesFromDocker
+  with ActivationStatusRequest with ReportingTestName {
+
+  private val votingInterval = 25
+  private val blocksForActivation = 18
   private val defaultVotingFeatureNum: Short = 1
-  private val nonVotingFeatureNum: Short     = 2
+  private val nonVotingFeatureNum: Short = 2
 
-  override protected def nodeConfigs: Seq[Config] =
-    NodeConfigs.newBuilder
-      .overrideBase(
-        _.raw(
-          s"""TN {
+  override protected def nodeConfigs: Seq[Config] = NodeConfigs.newBuilder
+    .overrideBase(_.raw(
+      s"""TN {
          |  blockchain.custom {
          |    functionality {
          |      pre-activated-features = {}
@@ -55,6 +51,12 @@ class VoteForFeatureByDefaultTestSuite
       .buildNonConflicting()
 
   private def supportedNodes   = nodes.init
+    ))
+    .withDefault(3)
+    .withSpecial(_.raw(s"TN.features.supported=[$nonVotingFeatureNum]"))
+    .buildNonConflicting()
+
+  private def supportedNodes = nodes.init
   private def notSupportedNode = nodes.last
 
   "supported blocks increased when voting starts, one node votes against, three by default" in {

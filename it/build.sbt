@@ -20,13 +20,22 @@ inTask(docker)(
       val configTemplate = (Compile / resourceDirectory).value / "template.conf"
       val startWaves     = sourceDirectory.value / "container" / "start-TN.sh"
 
-      val withAspectJ     = Option(System.getenv("WITH_ASPECTJ")).fold(false)(_.toBoolean)
-      val aspectjAgentUrl = "http://search.maven.org/remotecontent?filepath=org/aspectj/aspectjweaver/1.9.1/aspectjweaver-1.9.1.jar"
-      val yourKitArchive  = "YourKit-JavaProfiler-2018.04-docker.zip"
+inTask(docker)(Seq(
+  dockerfile := {
+    val configTemplate = (Compile / resourceDirectory).value / "template.conf"
+    val startWaves = sourceDirectory.value / "container" / "start-TN.sh"
+    val profilerAgent = yourKitRedistDir.value / "libyjpagent.so"
 
-      new Dockerfile {
-        from("anapsix/alpine-java:8_server-jre")
-        runRaw("mkdir -p /opt/TN")
+    new Dockerfile {
+      from("anapsix/alpine-java:8_server-jre")
+      add((assembly in LocalProject("node")).value, "/opt/TN/TN.jar")
+      add(Seq(configTemplate, startWaves, profilerAgent), "/opt/TN/")
+      add(profilerAgent, "/opt/TN/")
+      run("chmod", "+x", "/opt/TN/start-TN.sh")
+      entryPoint("/opt/TN/start-TN.sh")
+      expose(10001)
+    }
+  },
 
         // Install YourKit
         runRaw(s"""apk update && \\
@@ -72,26 +81,23 @@ lazy val itTestsCommonSettings: Seq[Def.Setting[_]] = Seq(
     for {
       group <- testGrouping.value
       suite <- group.tests
-    } yield
-      Group(
-        suite.name,
-        Seq(suite),
-        Tests.SubProcess(
-          ForkOptions(
-            javaHome = javaHomeValue,
-            outputStrategy = outputStrategy.value,
-            bootJars = Vector.empty[java.io.File],
-            workingDirectory = Option(baseDirectory.value),
-            runJVMOptions = Vector(
-              "-XX:+IgnoreUnrecognizedVMOptions",
-              "--add-modules=java.xml.bind",
-              "-DTN.it.logging.appender=FILE",
-              s"-DTN.it.logging.dir=${logDirectoryValue / suite.name.replaceAll("""(\w)\w*\.""", "$1.")}"
-            ) ++ javaOptionsValue,
-            connectInput = false,
-            envVars = envVarsValue
-          ))
-      )
+
+    } yield Group(
+      suite.name,
+      Seq(suite),
+      Tests.SubProcess(ForkOptions(
+        javaHome = javaHomeValue,
+        outputStrategy = outputStrategy.value,
+        bootJars = Vector.empty[java.io.File],
+        workingDirectory = Option(baseDirectory.value),
+        runJVMOptions = Vector(
+          "-DTN.it.logging.appender=FILE",
+          s"-DTN.it.logging.dir=${logDirectoryValue / suite.name.replaceAll("""(\w)\w*\.""", "$1.")}",
+          s"-DTN.profiling.yourKitDir=$yourKitRedistDirValue"
+        ) ++ javaOptionsValue,
+        connectInput = false,
+        envVars = envVarsValue
+      )))
   }
 )
 

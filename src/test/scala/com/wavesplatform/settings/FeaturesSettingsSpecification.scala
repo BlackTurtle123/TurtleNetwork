@@ -7,7 +7,8 @@ import org.scalatest.{FlatSpec, Matchers}
 
 class FeaturesSettingsSpecification extends FlatSpec with Matchers {
   "FeaturesSettings" should "read values" in {
-    val config = ConfigFactory.parseString("""
+    val config = ConfigFactory.parseString(
+      """
         |TN {
         |  features {
         |    auto-shutdown-on-unsupported-feature = yes

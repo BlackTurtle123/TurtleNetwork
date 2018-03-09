@@ -34,7 +34,8 @@ class WavesSettingsSpecification extends FlatSpec with Matchers {
   testConfig("devnet")()
 
   "TNSettings" should "resolve folders correctly" in {
-    val config = loadConfig(ConfigFactory.parseString(s"""TN {
+    val config = loadConfig(ConfigFactory.parseString(
+      s"""TN {
          |  directory = "/xxx"
          |  data-directory = "/xxx/data"
          |  ntp-server = "example.com"

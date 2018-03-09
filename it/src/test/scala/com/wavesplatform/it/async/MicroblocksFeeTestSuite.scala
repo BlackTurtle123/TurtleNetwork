@@ -23,16 +23,13 @@ class MicroblocksFeeTestSuite extends FreeSpec with Matchers with CancelAfterFai
   private def txRequestsGen(n: Int, fee: Long): Future[Unit] = {
     val parallelRequests = 1
 
-    def requests(n: Int): Future[Unit] =
-      Future
-        .sequence {
-          //Not mining node sends transfer transactions to another not mining node
-          //Mining nodes collect fee
-          (1 to n).map { _ =>
-            notMiner.transfer(notMiner.address, firstAddress, (1 + Random.nextInt(10)).TN, fee)
-          }
-        }
-        .map(_ => ())
+    def requests(n: Int): Future[Unit] = Future
+      .sequence {
+        //Not mining node sends transfer transactions to another not mining node
+        //Mining nodes collect fee
+        (1 to n).map { _ => notMiner.transfer(notMiner.address, firstAddress, (1 + Random.nextInt(10)).TN, fee) }
+      }
+      .map(_ => ())
 
     val steps = (1 to n)
       .sliding(parallelRequests, parallelRequests)
@@ -82,17 +79,48 @@ class MicroblocksFeeTestSuite extends FreeSpec with Matchers with CancelAfterFai
 
   private val microblockActivationHeight = 10
   private val minerConfig = ConfigFactory.parseString(
-    s"""TN {
-       |  blockchain.custom.functionality.pre-activated-features.2 = $microblockActivationHeight
-       |  miner.quorum = 3
+    s"""
+       |TN {
+       |   blockchain {
+       |     custom {
+       |        functionality{
+       |          pre-activated-features = {2=$microblockActivationHeight}
+       |        }
+       |        genesis {
+       |          signature: "gC84PYfvJRdLpUKDXNddTcWmH3wWhhKD4W9d2Z1HY46xkvgAdqoksknXHKzCBe2PEhzmDW49VKxfWeyzoMB4LKi"
+       |          transactions = [
+       |            {recipient: "3Hm3LGoNPmw1VTZ3eRA2pAfeQPhnaBm6YFC", amount: 250000000000000},
+       |            {recipient: "3HPG313x548Z9kJa5XY4LVMLnUuF77chcnG", amount: 250000000000000},
+       |            {recipient: "3HZxhQhpSU4yEGJdGetncnHaiMnGmUusr9s", amount: 250000000000000},
+       |            {recipient: "3HVW7RDYVkcN5xFGBNAUnGirb5KaBSnbUyB", amount: 250000000000000}
+       |          ]
+       |       }
+       |      }
+       |   }
+       |   miner.quorum = 3
        |}
       """.stripMargin
   )
 
   private val notMinerConfig = ConfigFactory.parseString(
     s"""TN {
-       |  blockchain.custom.functionality.pre-activated-features.2 = $microblockActivationHeight
-       |  miner.enable = no
+       |   blockchain {
+       |     custom {
+       |        functionality{
+       |          pre-activated-features = {2=$microblockActivationHeight}
+       |        }
+       |        genesis {
+       |          signature: "gC84PYfvJRdLpUKDXNddTcWmH3wWhhKD4W9d2Z1HY46xkvgAdqoksknXHKzCBe2PEhzmDW49VKxfWeyzoMB4LKi"
+       |          transactions = [
+       |            {recipient: "3Hm3LGoNPmw1VTZ3eRA2pAfeQPhnaBm6YFC", amount: 250000000000000},
+       |            {recipient: "3HPG313x548Z9kJa5XY4LVMLnUuF77chcnG", amount: 250000000000000},
+       |            {recipient: "3HZxhQhpSU4yEGJdGetncnHaiMnGmUusr9s", amount: 250000000000000},
+       |            {recipient: "3HVW7RDYVkcN5xFGBNAUnGirb5KaBSnbUyB", amount: 250000000000000}
+       |          ]
+       |       }
+       |      }
+       |   }
+       |   miner.enable = no
        |}
       """.stripMargin
   )

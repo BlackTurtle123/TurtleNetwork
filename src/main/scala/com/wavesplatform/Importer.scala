@@ -28,20 +28,8 @@ object Importer extends ScorexLogging {
 
     SLF4JBridgeHandler.removeHandlersForRootLogger()
     SLF4JBridgeHandler.install()
-
-    val argi = args.iterator
-    val (verifyTransactions, configOpt) = {
-      Try(argi.next) match {
-        case Success("-n") | Success("-no-verify") => (false, Try(argi.next))
-        case conf                                  => (true, conf)
-      }
-    }
-    val configFilename     = configOpt.toOption.getOrElse("TN-testnet.conf")
-    val blockchainFilename = Try(argi.next)
-    val importHeight       = Try(argi.next).map(_.toInt).getOrElse(Int.MaxValue)
-
-    val config   = loadConfig(ConfigFactory.parseFile(new File(configFilename)))
-    val settings = WavesSettings.fromConfig(config)
+    val configFilename = Try(args(0)).toOption.getOrElse("TN-testnet.conf")
+    val settings = WavesSettings.fromConfig(loadConfig(ConfigFactory.parseFile(new File(configFilename))))
     AddressScheme.current = new AddressScheme {
       override val chainId: Byte = settings.blockchainSettings.addressSchemeCharacter.toByte
     }

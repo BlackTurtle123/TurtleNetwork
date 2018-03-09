@@ -2,11 +2,15 @@
 For information about swapping your TurtleNode to TurtleNetwork, please read [How to swap $TN](https://github.com/BlackTurtle123/TurtleNetwork/wiki/TurtleNode-Gateway:-How-to-swap-$TN-from-Waves-Platform-to-Turtle-Network).
 In the master branch there is a code with functions that is under development. The latest release for each network can be found in the [Releases section](https://github.com/BlackTurtle123/TurtleNetwork/releases), you can switch to the corresponding tag and build the application.
 
-[How to configure TN node](https://github.com/BlackTurtle123/TurtleNetwork/wiki/Setting-up-a-$TN-node)
+# TN [![Build Status](https://travis-ci.org/wavesplatform/Waves.svg?branch=master)](https://travis-ci.org/wavesplatform/Waves) [![](https://images.microbadger.com/badges/version/wavesplatform/waves-testnet.svg)](http://microbadger.com/images/wavesplatform/waves-testnet "Testnet Node Docker image")
+
+In the master branch there is a code with functions that is under development. The latest release for each network can be found in the [Releases section](https://github.com/wavesplatform/Waves/releases), you can switch to the corresponding tag and build the application.
+
+[How to configure TN node](https://github.com/wavesplatform/Waves/wiki/How-to-install-Waves-node)
 
 # Installation
 
-Please read [repo wiki article](https://github.com/BlackTurtle123/TurtleNetwork/wiki/Setting-up-a-$TN-node).
+Please read [repo wiki article](https://github.com/wavesplatform/Waves/wiki/How-to-install-Waves-node).
 
 ## Compiling Packages from source
 
@@ -50,11 +54,6 @@ If you prefer to work with _SBT_ in the interactive mode, open it with settings:
 SBT_OPTS="${SBT_OPTS} -Xms512M -Xmx1536M -Xss1M -XX:+CMSClassUnloadingEnabled" sbt
 ```
 
-For Java9 it should be:
-```
-SBT_OPTS="${SBT_OPTS} -Xms512M -Xmx1536M -Xss1M -XX:+CMSClassUnloadingEnabled --add-modules=java.xml.bind --add-exports java.base/jdk.internal.ref=ALL-UNNAMED" sbt
-```
-
 to solve the `Metaspace error` problem.
 
 # Running Integration Tests
@@ -62,11 +61,11 @@ to solve the `Metaspace error` problem.
 ## TL;DR
 
  * Make sure you have [Docker](https://www.docker.com/get-docker) and SBT. 
- * `sbt it/test`
+ * `sbt it:test`
  
 ## Customizing Tests
 
-By default, `it/test` will do the following: 
+By default, `it:test` will do the following: 
 * Build a container image with the fat jar and a [template.conf](src/it/resources/template.conf). The newly-built image
   will be registered with the local Docker daemon. This image is built with [sbt-docker](https://github.com/marcuslonnberg/sbt-docker)
   plugin. 
@@ -90,14 +89,14 @@ options to `javaOptions` in `IntegrationTest` configuration:
 javaOptions in IntegrationTest += "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005"
 ```
 
-Debugging a node inside a container is a little more complicated: you will need to modify the `TN_OPTS` environment
+Debugging a node inside a container is a little more complicated: you will need to modify the `WAVES_OPTS` environment
 variable before starting a container.
 
 ### Running Tests from IDE
 
 You can run integration test suites from your preferred IDE. The only requirement is to have Docker image pre-built and
 have `docker.imageId` system property defined for the run configuration. The easiest way to build an image is to issue
-`sbt it/docker` command. You'll find the image ID in the SBT output:
+`sbt docker` command. You'll find the image ID in the SBT output:
 
 ```
 ...

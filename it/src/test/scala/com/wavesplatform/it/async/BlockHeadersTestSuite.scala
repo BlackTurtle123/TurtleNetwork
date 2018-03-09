@@ -43,14 +43,11 @@ class BlockHeadersTestSuite
   private def txRequestsGen(n: Int, fee: Long): Future[Unit] = {
     val parallelRequests = 1
 
-    def requests(n: Int): Future[Unit] =
-      Future
-        .sequence {
-          (1 to n).map { _ =>
-            notMiner.transfer(notMiner.address, firstAddress, (1 + Random.nextInt(10)).TN, fee)
-          }
-        }
-        .map(_ => ())
+    def requests(n: Int): Future[Unit] = Future
+      .sequence {
+        (1 to n).map { _ => notMiner.transfer(notMiner.address, firstAddress, (1 + Random.nextInt(10)).TN, fee) }
+      }
+      .map(_ => ())
 
     val steps = (1 to n)
       .sliding(parallelRequests, parallelRequests)
@@ -96,7 +93,6 @@ class BlockHeadersTestSuite
 
   "blockSeq content should be equal to blockHeaderSeq, except transactions info" in {
     val f = for {
-
       baseHeight   <- traverse(nodes)(_.height).map(_.max)
       _            <- txRequestsGen(30, 2.TN)
       _            <- nodes.waitForSameBlockHeadesAt(baseHeight + 3)

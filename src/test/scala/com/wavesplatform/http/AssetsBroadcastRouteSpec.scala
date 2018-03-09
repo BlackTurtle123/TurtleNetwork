@@ -222,41 +222,17 @@ class AssetsBroadcastRouteSpec extends RouteSpec("/assets/broadcast/") with Requ
       }
     }
 
-    "/batch-transfer" - {
-      def posting[A: Writes](v: A): RouteTestResult = Post(routePath("batch-transfer"), v).addHeader(ApiKeyHeader) ~> route
+    "transfer transaction" in forAll(broadcastTransferReq) { tr =>
+      def posting[A: Writes](v: A): RouteTestResult = Post(routePath("transfer"), v) ~> route
 
-      "accepts TransferRequest" in posting(List(transferRequest)) ~> check {
-        status shouldBe StatusCodes.OK
-        val xs = responseAs[Seq[TransferTransactions]]
-        xs.size shouldBe 1
-        xs.head.select[TransferTransactionV1] shouldBe defined
-      }
-
-      "accepts VersionedTransferRequest" in posting(List(versionedTransferRequest)) ~> check {
-        status shouldBe StatusCodes.OK
-        val xs = responseAs[Seq[TransferTransactions]]
-        xs.size shouldBe 1
-        xs.head.select[TransferTransactionV2] shouldBe defined
-      }
-
-      "accepts both TransferRequest and VersionedTransferRequest" in {
-        val reqs = List(
-          Coproduct[SignedTransferRequests](transferRequest),
-          Coproduct[SignedTransferRequests](versionedTransferRequest)
-        )
-
-        posting(reqs) ~> check {
-          status shouldBe StatusCodes.OK
-          val xs = responseAs[Seq[TransferTransactions]]
-          xs.size shouldBe 2
-          xs.flatMap(_.select[TransferTransactionV1]) shouldNot be(empty)
-          xs.flatMap(_.select[TransferTransactionV2]) shouldNot be(empty)
-        }
-      }
-
-      "returns a error if it is not a transfer request" in posting(List(issueReq.sample.get)) ~> check {
-        status shouldNot be(StatusCodes.OK)
-      }
+      forAll(nonPositiveLong) { q => posting(tr.copy(amount = q)) should produce(NegativeAmount(s"$q of TN")) }
+      forAll(invalidBase58) { pk => posting(tr.copy(senderPublicKey = pk)) should produce(InvalidAddress) }
+      forAll(invalidBase58) { a => posting(tr.copy(recipient = a)) should produce(InvalidAddress) }
+      forAll(invalidBase58) { a => posting(tr.copy(assetId = Some(a))) should produce(CustomValidationError("invalid.assetId")) }
+      forAll(invalidBase58) { a => posting(tr.copy(feeAssetId = Some(a))) should produce(CustomValidationError("invalid.feeAssetId")) }
+      forAll(longAttachment) { a => posting(tr.copy(attachment = Some(a))) should produce(CustomValidationError("invalid.attachment")) }
+      forAll(posNum[Long]) { quantity => posting(tr.copy(amount = quantity, fee = Long.MaxValue)) should produce(OverflowError) }
+      forAll(nonPositiveLong) { fee => posting(tr.copy(fee = fee)) should produce(InsufficientFee) }
     }
 
   }

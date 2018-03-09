@@ -9,7 +9,8 @@ import org.scalatest.{FeatureSpec, GivenWhenThen, ParallelTestExecution}
 
 class BlacklistParallelSpecification extends FeatureSpec with GivenWhenThen with ParallelTestExecution {
 
-  private val config = loadConfig(ConfigFactory.parseString("""TN.network {
+  private val config = loadConfig(ConfigFactory.parseString(
+    """TN.network {
       |  known-peers = []
       |  file = null
       |  black-list-residence-time: 1s

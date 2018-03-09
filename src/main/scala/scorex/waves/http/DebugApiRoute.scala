@@ -92,7 +92,7 @@ case class DebugApiRoute(settings: RestAPISettings,
       value = "Json with data",
       required = true,
       paramType = "body",
-      dataType = "scorex.waves.http.DebugMessage",
+      dataType = "scorex.TN.http.DebugMessage",
       defaultValue = "{\n\t\"message\": \"foo\"\n}"
     )
   ))
@@ -186,7 +186,7 @@ case class DebugApiRoute(settings: RestAPISettings,
       value = "Json with data",
       required = true,
       paramType = "body",
-      dataType = "scorex.waves.http.RollbackParams",
+      dataType = "scorex.TN.http.RollbackParams",
       defaultValue = "{\n\t\"rollbackTo\": 3,\n\t\"returnTransactionsToUTX\": false\n}"
     )
   ))
