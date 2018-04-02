@@ -38,7 +38,8 @@ case class MatcherSettings(enable: Boolean,
                            orderBookSnapshotHttpCache: OrderBookSnapshotHttpCache.Settings)
 
 object MatcherSettings {
-  val configPath: String = "TN.matcher"
+  implicit val chosenCase: NameMapper = net.ceedubs.ficus.readers.namemappers.implicits.hyphenCase
+  val configPath: String              = "TN.matcher"
 
   def fromConfig(config: Config): MatcherSettings = {
     val enabled               = config.as[Boolean](s"$configPath.enable")

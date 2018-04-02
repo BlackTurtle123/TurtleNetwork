@@ -134,8 +134,7 @@ this automatically.
     * `-Dkamon.modules.kamon-system-metrics.auto-start=yes` enables metrics of _CPU_, _Memory_ and others;
     * See [application.conf](https://github.com/wavesplatform/Waves/blob/master/src/main/resources/application.conf)
       for more options.
-
-
+      
 # Acknowledgement
 
 [<img src="https://www.yourkit.com/images/yklogo.png">](http://www.yourkit.com/java/profiler/index.jsp)  

@@ -109,8 +109,7 @@ case class MatcherApiRoute(assetPairBuilder: AssetPairBuilder,
                            dataType = "integer",
                            paramType = "query")
     ))
-  def getOrderBook: Route = (path("orderbook" / AssetPairPM) & get) { p =>
-
+  def orderBook: Route = (path("orderbook" / Segment / Segment) & get) { (a1, a2) =>
     parameters('depth.as[Int].?) { depth =>
       withAssetPair(p, redirectToInverse = true) { pair =>
         complete(orderBookSnapshot.get(pair, depth))
@@ -304,15 +303,29 @@ case class MatcherApiRoute(assetPairBuilder: AssetPairBuilder,
         dataType = "com.wavesplatform.matcher.api.CancelOrderRequest"
       )
     ))
-  def historyDelete: Route = (path("orderbook" / AssetPairPM / "delete") & post) { _ =>
-    json[CancelOrderRequest] { req =>
-      req.orderId.fold[MatcherResponse](NotImplemented("Batch order deletion is not supported yet"))(OrderDeleted)
+  def historyDelete: Route = (path("orderbook" / Segment / Segment / "delete") & post) { (a1, a2) =>
+    withAssetPair(a1, a2) { pair =>
+      json[CancelOrderRequest] { req =>
+        if (req.isSignatureValid) {
+          (orderHistory ? DeleteOrderFromHistory(pair, req.senderPublicKey.address, Base58.encode(req.orderId), NTP.correctedTime()))
+            .mapTo[MatcherResponse]
+            .map(r => r.code -> r.json)
+        } else {
+          StatusCodes.BadRequest -> Json.obj("message" -> "Incorrect signature")
+        }
+      }
+    }
+  }
+
+  def withAssetPair(a1: String, a2: String): Directive1[AssetPair] = {
+    AssetPair.createAssetPair(a1, a2) match {
+      case Success(p) => provide(p)
+      case Failure(_) => complete(StatusCodes.BadRequest -> Json.obj("message" -> "Invalid asset pair"))
     }
   }
 
   @Path("/orderbook/{amountAsset}/{priceAsset}/publicKey/{publicKey}")
   @ApiOperation(value = "Order History by Asset Pair and Public Key",
-
     notes = "Get Order History for a given Asset Pair and Public Key",
     httpMethod = "GET")
   @ApiImplicitParams(Array(
@@ -418,15 +431,13 @@ case class MatcherApiRoute(assetPairBuilder: AssetPairBuilder,
   }
 
   @Path("/orderbook/{amountAsset}/{priceAsset}/tradableBalance/{address}")
-
-  @ApiOperation(value = "Tradable balance for Asset Pair",
-    notes = "Get Tradable balance for the given Asset Pair",
-    httpMethod = "GET")
-  @ApiImplicitParams(Array(
-    new ApiImplicitParam(name = "amountAsset", value = "Amount Asset Id in Pair, or 'TN'", dataType = "string", paramType = "path"),
-    new ApiImplicitParam(name = "priceAsset", value = "Price Asset Id in Pair, or 'TN'", dataType = "string", paramType = "path"),
-    new ApiImplicitParam(name = "address", value = "Account Address", required = true, dataType = "string", paramType = "path")
-  ))
+  @ApiOperation(value = "Tradable balance for Asset Pair", notes = "Get Tradable balance for the given Asset Pair", httpMethod = "GET")
+  @ApiImplicitParams(
+    Array(
+      new ApiImplicitParam(name = "amountAsset", value = "Amount Asset Id in Pair, or 'TN'", dataType = "string", paramType = "path"),
+      new ApiImplicitParam(name = "priceAsset", value = "Price Asset Id in Pair, or 'TN'", dataType = "string", paramType = "path"),
+      new ApiImplicitParam(name = "address", value = "Account Address", required = true, dataType = "string", paramType = "path")
+    ))
   def getTradableBalance: Route = (path("orderbook" / Segment / Segment / "tradableBalance" / Segment) & get) { (a1, a2, address) =>
     withAssetPair(a1, a2) { pair =>
       complete((orderHistory ? GetTradableBalance(pair, address, NTP.correctedTime()))
@@ -462,14 +473,13 @@ case class MatcherApiRoute(assetPairBuilder: AssetPairBuilder,
 
   @Path("/orderbook/{amountAsset}/{priceAsset}/{orderId}")
 
-  @ApiOperation(value = "Order Status",
-    notes = "Get Order status for a given Asset Pair during the last 30 days",
-    httpMethod = "GET")
-  @ApiImplicitParams(Array(
-    new ApiImplicitParam(name = "amountAsset", value = "Amount Asset Id in Pair, or 'TN'", dataType = "string", paramType = "path"),
-    new ApiImplicitParam(name = "priceAsset", value = "Price Asset Id in Pair, or 'TN'", dataType = "string", paramType = "path"),
-    new ApiImplicitParam(name = "orderId", value = "Order Id", required = true, dataType = "string", paramType = "path")
-  ))
+  @ApiOperation(value = "Order Status", notes = "Get Order status for a given Asset Pair during the last 30 days", httpMethod = "GET")
+  @ApiImplicitParams(
+    Array(
+      new ApiImplicitParam(name = "amountAsset", value = "Amount Asset Id in Pair, or 'TN'", dataType = "string", paramType = "path"),
+      new ApiImplicitParam(name = "priceAsset", value = "Price Asset Id in Pair, or 'TN'", dataType = "string", paramType = "path"),
+      new ApiImplicitParam(name = "orderId", value = "Order Id", required = true, dataType = "string", paramType = "path")
+    ))
   def orderStatus: Route = (path("orderbook" / Segment / Segment / Segment) & get) { (a1, a2, orderId) =>
     withAssetPair(a1, a2) { pair =>
       complete((orderHistory ? GetOrderStatus(pair, orderId, NTP.correctedTime()))
@@ -501,13 +511,12 @@ case class MatcherApiRoute(assetPairBuilder: AssetPairBuilder,
   }
 
   @Path("/orderbook/{amountAsset}/{priceAsset}")
-
-  @ApiOperation(value = "Remove Order Book for a given Asset Pair",
-    notes = "Remove Order Book for a given Asset Pair", httpMethod = "DELETE")
-  @ApiImplicitParams(Array(
-    new ApiImplicitParam(name = "amountAsset", value = "Amount Asset Id in Pair, or 'TN'", dataType = "string", paramType = "path"),
-    new ApiImplicitParam(name = "priceAsset", value = "Price Asset Id in Pair, or 'TN'", dataType = "string", paramType = "path")
-  ))
+  @ApiOperation(value = "Remove Order Book for a given Asset Pair", notes = "Remove Order Book for a given Asset Pair", httpMethod = "DELETE")
+  @ApiImplicitParams(
+    Array(
+      new ApiImplicitParam(name = "amountAsset", value = "Amount Asset Id in Pair, or 'TN'", dataType = "string", paramType = "path"),
+      new ApiImplicitParam(name = "priceAsset", value = "Price Asset Id in Pair, or 'TN'", dataType = "string", paramType = "path")
+    ))
   def orderBookDelete: Route = (path("orderbook" / Segment / Segment) & delete & withAuth) { (a1, a2) =>
     withAssetPair(a1, a2) { pair =>
       complete((matcher ? DeleteOrderBookRequest(pair))

@@ -231,16 +231,6 @@ class Docker(suiteConfig: Config = empty, tag: String = "", enableProfiling: Boo
         .portBindings(portBindings)
         .build()
 
-      val nodeName   = actualConfig.getString("TN.network.node-name")
-      val nodeNumber = nodeName.replace("node", "").toInt
-      val ip         = ipForNode(nodeNumber)
-
-      val javaOptions = Option(System.getenv("CONTAINER_JAVA_OPTS")).getOrElse("")
-      val configOverrides: String = {
-        val ntpServer = Option(System.getenv("NTP_SERVER")).fold("")(x => s"-DTN.ntp-server=$x ")
-
-        var config = s"$javaOptions ${renderProperties(asProperties(overrides))} " +
-          s"-Dlogback.stdout.level=TRACE -Dlogback.file.level=OFF -DTN.network.declared-address=$ip:$networkPort $ntpServer"
     val nodeName = actualConfig.getString("TN.network.node-name")
     val nodeNumber = nodeName.replace("node", "").toInt
     val ip = ipForNode(nodeNumber)

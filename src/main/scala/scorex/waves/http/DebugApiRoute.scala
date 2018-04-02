@@ -53,8 +53,8 @@ case class DebugApiRoute(settings: RestAPISettings,
                          configRoot: ConfigObject
                         ) extends ApiRoute with ScorexLogging {
 
-  private lazy val configStr = configRoot.render(ConfigRenderOptions.concise().setJson(true).setFormatted(true))
-  private lazy val fullConfig: JsValue = Json.parse(configStr)
+  private lazy val configStr             = configRoot.render(ConfigRenderOptions.concise().setJson(true).setFormatted(true))
+  private lazy val fullConfig: JsValue   = Json.parse(configStr)
   private lazy val wavesConfig: JsObject = Json.obj("TN" -> (fullConfig \ "TN").get)
 
   override lazy val route: Route = pathPrefix("debug") {
@@ -86,16 +86,17 @@ case class DebugApiRoute(settings: RestAPISettings,
     notes = "Prints a string at DEBUG level, strips to 100 chars",
     httpMethod = "POST"
   )
-  @ApiImplicitParams(Array(
-    new ApiImplicitParam(
-      name = "body",
-      value = "Json with data",
-      required = true,
-      paramType = "body",
-      dataType = "scorex.TN.http.DebugMessage",
-      defaultValue = "{\n\t\"message\": \"foo\"\n}"
-    )
-  ))
+  @ApiImplicitParams(
+    Array(
+      new ApiImplicitParam(
+        name = "body",
+        value = "Json with data",
+        required = true,
+        paramType = "body",
+        dataType = "scorex.TN.http.DebugMessage",
+        defaultValue = "{\n\t\"message\": \"foo\"\n}"
+      )
+    ))
   @ApiResponses(Array(new ApiResponse(code = 200, message = "Json portfolio")))
   def print: Route = (path("print") & post & withAuth) {
     json[DebugMessage] { params =>
@@ -151,18 +152,21 @@ case class DebugApiRoute(settings: RestAPISettings,
     }
   }
 
+  @Path("/state")
+  @ApiOperation(value = "State", notes = "Get current state", httpMethod = "GET")
+  @ApiResponses(Array(new ApiResponse(code = 200, message = "Json state")))
+  def state: Route = (path("state") & get & withAuth) {
+    complete(stateReader.wavesDistribution(stateReader.height).map { case (a, b) => a.stringRepr -> b })
+  }
+
   @Path("/stateTN/{height}")
   @ApiOperation(value = "State at block", notes = "Get state at specified height", httpMethod = "GET")
-  @ApiImplicitParams(Array(
-    new ApiImplicitParam(name = "height", value = "height", required = true, dataType = "integer", paramType = "path")
-  ))
+  @ApiImplicitParams(
+    Array(
+      new ApiImplicitParam(name = "height", value = "height", required = true, dataType = "integer", paramType = "path")
+    ))
   def stateWaves: Route = (path("stateTN" / IntNumber) & get & withAuth) { height =>
-    val s = stateReader()
-    val result = s.accountPortfolios.keys
-      .map(acc => acc.stringRepr -> s.balanceAtHeight(acc, height))
-      .filter(_._2 != 0)
-      .toMap
-    complete(result)
+    complete(stateReader.wavesDistribution(height).map { case (a, b) => a.stringRepr -> b })
   }
 
   private def rollbackToBlock(blockId: ByteStr, returnTransactionsToUtx: Boolean): Future[ToResponseMarshallable] = Future {
@@ -180,19 +184,21 @@ case class DebugApiRoute(settings: RestAPISettings,
 
   @Path("/rollback")
   @ApiOperation(value = "Rollback to height", notes = "Removes all blocks after given height", httpMethod = "POST")
-  @ApiImplicitParams(Array(
-    new ApiImplicitParam(
-      name = "body",
-      value = "Json with data",
-      required = true,
-      paramType = "body",
-      dataType = "scorex.TN.http.RollbackParams",
-      defaultValue = "{\n\t\"rollbackTo\": 3,\n\t\"returnTransactionsToUTX\": false\n}"
-    )
-  ))
-  @ApiResponses(Array(
-    new ApiResponse(code = 200, message = "200 if success, 404 if there are no block at this height")
-  ))
+  @ApiImplicitParams(
+    Array(
+      new ApiImplicitParam(
+        name = "body",
+        value = "Json with data",
+        required = true,
+        paramType = "body",
+        dataType = "scorex.TN.http.RollbackParams",
+        defaultValue = "{\n\t\"rollbackTo\": 3,\n\t\"returnTransactionsToUTX\": false\n}"
+      )
+    ))
+  @ApiResponses(
+    Array(
+      new ApiResponse(code = 200, message = "200 if success, 404 if there are no block at this height")
+    ))
   def rollback: Route = (path("rollback") & post & withAuth) {
     json[RollbackParams] { params =>
       history.blockAt(params.rollbackTo) match {
