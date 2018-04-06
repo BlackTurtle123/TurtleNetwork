@@ -122,7 +122,7 @@ inConfig(Test)(
 
 inConfig(Linux)(
   Seq(
-    maintainer := "TNplatform.com",
+    maintainer := "wavesplatform.com",
     packageSummary := "TN node",
     packageDescription := "TN node"
   ))

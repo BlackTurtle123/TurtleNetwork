@@ -1,4 +1,4 @@
-package com.TNplatform.settings
+package com.wavesplatform.settings
 
 import com.typesafe.config.ConfigFactory
 import net.ceedubs.ficus.Ficus._

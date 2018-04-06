@@ -1,4 +1,4 @@
-package com.TNplatform.settings
+package com.wavesplatform.settings
 
 import com.typesafe.config.ConfigFactory
 import com.wavesplatform.network.InvalidBlockStorageImpl.InvalidBlockStorageSettings

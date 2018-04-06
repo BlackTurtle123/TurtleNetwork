@@ -535,7 +535,7 @@ class MatcherTestSuite extends FreeSpec with Matchers with BeforeAndAfterAll wit
 
 object MatcherTestSuite {
 
-  import NodeConfigs.Default
+  import com.wavesplatform.it.NodeConfigs._
 
   val ForbiddenAssetId = "FdbnAsset"
 
