@@ -18,13 +18,13 @@ import scorex.transaction.assets.TransferTransaction.MaxAttachmentSize
 
 class MassTransferTransactionSuite extends BaseTransactionSuite with CancelAfterFailure {
 
-  private val assetQuantity = 100.TN
-  private val transferAmount = 5.TN
-  private val leasingAmount = 5.TN
-  private val leasingFee = 0.003.TN
-  private val transferFee = notMiner.settings.feesSettings.fees(TransactionType.TransferTransaction.id)(0).fee
-  private val issueFee = 1.TN
-  private val massTransferFeePerTransfer = notMiner.settings.feesSettings.fees(TransactionType.MassTransferTransaction.id)(0).fee
+  private val assetQuantity              = 100.TN
+  private val transferAmount             = 5.TN
+  private val leasingAmount              = 5.TN
+  private val leasingFee                 = 0.003.TN
+  private val transferFee                = notMiner.settings.feesSettings.fees(TransferTransaction.typeId)(0).fee
+  private val issueFee                   = 1.TN
+  private val massTransferFeePerTransfer = notMiner.settings.feesSettings.fees(MassTransferTransaction.typeId)(0).fee
 
 
   test("asset mass transfer changes asset balances and sender's.TN balance is decreased by fee.") {
@@ -69,7 +69,7 @@ class MassTransferTransactionSuite extends BaseTransactionSuite with CancelAfter
     val (balance2, eff2) = notMiner.accountBalances(secondAddress)
     val transfers = List(Transfer(secondAddress, balance1 / 2), Transfer(thirdAddress, balance1 / 2))
 
-    assertBadRequest(sender.massTransfer(firstAddress, transfers, calcFee(transfers.size)))
+    assertBadRequestAndResponse(sender.massTransfer(firstAddress, transfers, calcFee(transfers.size)), "negative TN balance")
 
     nodes.waitForHeightAraise()
     notMiner.assertBalances(firstAddress, balance1, eff1)
@@ -96,8 +96,8 @@ class MassTransferTransactionSuite extends BaseTransactionSuite with CancelAfter
     val leaseTxId = sender.lease(firstAddress, secondAddress, leasingAmount, leasingFee).id
     nodes.waitForHeightAraiseAndTxPresent(leaseTxId)
 
-    assertBadRequest(sender.massTransfer(firstAddress, transfers, transferFee))
-    nodes.waitForHeightAraise()
+    assertBadRequestAndResponse(sender.massTransfer(firstAddress, transfers, calcFee(transfers.size)), "negative TN balance")
+    nodes.waitForHeightArise()
     notMiner.assertBalances(firstAddress, balance1 - leasingFee, eff1 - leasingAmount - leasingFee)
     notMiner.assertBalances(secondAddress, balance2, eff2 + leasingAmount)
   }

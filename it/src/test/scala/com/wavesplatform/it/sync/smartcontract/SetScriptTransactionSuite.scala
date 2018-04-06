@@ -16,10 +16,15 @@ import play.api.libs.json.Json
 class SetScriptTransactionSuite extends BaseTransactionSuite with CancelAfterFailure {
   private val fourthAddress: String = sender.createAddress()
 
-  private val acc0 = pkByAddress(firstAddress)
-  private val acc1 = pkByAddress(secondAddress)
-  private val acc2 = pkByAddress(thirdAddress)
-  private val acc3 = pkByAddress(fourthAddress)
+  private def randomPk = PrivateKeyAccount(Array.fill[Byte](32)(Random.nextInt(Byte.MaxValue).toByte))
+
+  private val acc0 = randomPk
+  private val acc1 = randomPk
+  private val acc2 = randomPk
+  private val acc3 = randomPk
+
+  private val transferAmount: Long = 1.TN
+  private val fee: Long            = 0.001.TN
 
   test("setup acc0 with 1 TN") {
     val tx =

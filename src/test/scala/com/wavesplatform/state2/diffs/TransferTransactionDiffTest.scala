@@ -28,19 +28,45 @@ class TransferTransactionDiffTest extends PropSpec
   } yield (genesis, issue1, issue2, transfer)
 
   property("transfers assets to recipient preserving TN invariant") {
-    forAll(preconditionsAndTransfer) { case ((genesis, issue1, issue2, transfer)) =>
-      assertDiffAndState(db, Seq(TestBlock.create(Seq(genesis, issue1, issue2))), TestBlock.create(Seq(transfer))) { case (totalDiff, newState) =>
-        val totalPortfolioDiff = Monoid.combineAll(totalDiff.txsDiff.portfolios.values)
-        totalPortfolioDiff.balance shouldBe 0
-        totalPortfolioDiff.effectiveBalance shouldBe 0
-        totalPortfolioDiff.assets.values.foreach(_ shouldBe 0)
+    forAll(preconditionsAndTransfer) {
+      case ((genesis, issue1, issue2, transfer)) =>
+        assertDiffAndState(Seq(TestBlock.create(Seq(genesis, issue1, issue2))), TestBlock.create(Seq(transfer))) {
+          case (totalDiff, newState) =>
+            assertBalanceInvariant(totalDiff)
 
-        val recipient: Address = transfer.recipient.asInstanceOf[Address]
-        val recipientPortfolio = newState.accountPortfolio(recipient)
-        if (transfer.sender.toAddress != recipient) {
-          transfer.assetId match {
-            case Some(aid) => recipientPortfolio shouldBe Portfolio(0, LeaseInfo.empty, Map(aid -> transfer.amount))
-            case None => recipientPortfolio shouldBe Portfolio(transfer.amount, LeaseInfo.empty, Map.empty)
+            val recipient: Address = transfer.recipient.asInstanceOf[Address]
+            val recipientPortfolio = newState.portfolio(recipient)
+            if (transfer.sender.toAddress != recipient) {
+              transfer.assetId match {
+                case Some(aid) => recipientPortfolio shouldBe Portfolio(0, LeaseBalance.empty, Map(aid -> transfer.amount))
+                case None      => recipientPortfolio shouldBe Portfolio(transfer.amount, LeaseBalance.empty, Map.empty)
+              }
+            }
+        }
+    }
+  }
+
+  val transferWithSmartAssetFee: Gen[(GenesisTransaction, IssueTransaction, SmartIssueTransaction, TransferTransaction)] = {
+    for {
+      master    <- accountGen
+      recepient <- otherAccountGen(master)
+      ts        <- positiveIntGen
+      genesis: GenesisTransaction = GenesisTransaction.create(master, ENOUGH_AMT, ts).right.get
+      issue: IssueTransaction         <- issueReissueBurnGeneratorP(ENOUGH_AMT, master).map(_._1)
+      feeIssue: SmartIssueTransaction <- smartIssueTransactionGen(master, scriptGen.map(_.some))
+      transfer                        <- transferGeneratorP(master, recepient, issue.id().some, feeIssue.id().some)
+    } yield (genesis, issue, feeIssue, transfer)
+  }
+
+  property("fails, if smart asset used as a fee") {
+    import smart._
+
+    forAll(transferWithSmartAssetFee) {
+      case (genesis, issue, fee, transfer) =>
+        assertDiffAndState(Seq(TestBlock.create(Seq(genesis))), TestBlock.create(Seq(issue, fee)), smartEnabledFS) {
+          case (_, state) => {
+            val diffOrError = TransferTransactionDiff(state, smartEnabledFS, System.currentTimeMillis(), state.height)(transfer)
+            diffOrError shouldBe Left(GenericError("Smart assets can't participate in TransferTransactions as a fee"))
           }
         }
       }

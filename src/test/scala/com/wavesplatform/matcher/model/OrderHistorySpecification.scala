@@ -140,8 +140,8 @@ class OrderHistorySpecification
     activeOrderIds(ord.senderPublicKey) shouldBe Seq(ord.id())
   }
 
-  property("New buy and sell TN order  added") {
-    val pk = PrivateKeyAccount("private".getBytes("utf-8"))
+  property("New buy and sell TN order added") {
+    val pk   = PrivateKeyAccount("private".getBytes("utf-8"))
     val pair = AssetPair(None, Some(ByteStr("BTC".getBytes)))
     val ord1 = buy(pair, 0.0008, 100000000, Some(pk))
     val ord2 = sell(pair, 0.0009, 210000000, Some(pk))
@@ -901,27 +901,11 @@ class OrderHistorySpecification
     val counter   = buy(pair, 100000, 0.0008, matcherFee = Some(2000L))
     val submitted = sell(pair, 100000, 0.0007, matcherFee = Some(1000L))
 
-    oh.process(OrderExecuted(LimitOrder(submitted), LimitOrder(counter)))
-
-    withClue(s"has no reserved assets, counter.senderPublicKey: ${counter.senderPublicKey}, counter.order.id=${counter.id()}") {
-      openVolume(counter.senderPublicKey, pair.amountAsset) shouldBe 0L
-      openVolume(counter.senderPublicKey, pair.priceAsset) shouldBe 0L
-    }
-
-    withClue(s"has no reserved assets, submitted.senderPublicKey: ${submitted.senderPublicKey}, submitted.order.id=${submitted.id()}") {
-      openVolume(submitted.senderPublicKey, pair.amountAsset) shouldBe 0L
-      openVolume(submitted.senderPublicKey, pair.priceAsset) shouldBe 0L
-    }
-
-    withClue("orders list of counter owner") {
-      activeOrderIds(counter.senderPublicKey) shouldBe empty
-      activeOrderIdsByPair(counter.senderPublicKey, pair) shouldBe empty
-    }
-
-    withClue("orders list of submitted owner") {
-      activeOrderIds(submitted.senderPublicKey) shouldBe empty
-      activeOrderIdsByPair(submitted.senderPublicKey, pair) shouldBe empty
-    }
+    oh.openPortfolio(pk.address) shouldBe
+      OpenPortfolio(
+        Map("TN"     -> (2 * matcherFee - LimitOrder(ord1).getReceiveAmount - LimitOrder(ord2).getReceiveAmount),
+            ass1.base58 -> ord1.amount,
+            ass2.base58 -> ord2.amount))
   }
 }
 

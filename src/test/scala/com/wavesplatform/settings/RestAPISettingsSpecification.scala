@@ -6,7 +6,6 @@ import org.scalatest.{FlatSpec, Matchers}
 class RestAPISettingsSpecification extends FlatSpec with Matchers {
   "RestAPISettings" should "read values" in {
     val config   = ConfigFactory.parseString("""
-
         |TN {
         |  rest-api {
         |    enable: yes

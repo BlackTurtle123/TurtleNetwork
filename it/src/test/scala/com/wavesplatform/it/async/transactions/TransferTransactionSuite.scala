@@ -16,11 +16,11 @@ class TransferTransactionSuite extends BaseTransactionSuite with TransferSending
 
   private val waitCompletion = 2.minutes
   private val defaultAssetQuantity = 100000
-  private val transferAmount = 5.TN
-  private val leasingAmount = 5.TN
-  private val leasingFee = 0.003.TN
-  private val transferFee = 0.002.TN
-  private val issueFee = 5.TN
+  private val transferAmount       = 5.TN
+  private val leasingAmount        = 5.TN
+  private val leasingFee           = 0.003.TN
+  private val transferFee          = 0.002.TN
+  private val issueFee             = 5.TN
 
   test("asset transfer changes sender's and recipient's asset balance; issuer's.TN balance is decreased by fee") {
     val f = for {
@@ -58,15 +58,11 @@ class TransferTransactionSuite extends BaseTransactionSuite with TransferSending
   }
 
   test("invalid signed TN transfer should not be in UTX or blockchain") {
-    def invalidByTsTx(ts: Long) = TransferTransaction.create(None,
-      sender.privateKey,
-      AddressOrAlias.fromString(sender.address).right.get,
-      1,
-      ts,
-      None,
-      1.TN,
-      Array.emptyByteArray
-    ).right.get
+    def invalidByTsTx(ts: Long) =
+      TransferTransaction
+        .create(None, sender.privateKey, AddressOrAlias.fromString(sender.address).right.get, 1, ts, None, 1.TN, Array.emptyByteArray)
+        .right
+        .get
 
     val invalidTimestamps: Seq[Long] = Seq(
       System.currentTimeMillis() + 1.day.toMillis,
@@ -105,7 +101,6 @@ class TransferTransactionSuite extends BaseTransactionSuite with TransferSending
 
     Await.result(f, waitCompletion)
   }
-
 
   test("can not make transfer without having enough of TN") {
     val f = for {

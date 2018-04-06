@@ -32,8 +32,7 @@ trait MatcherTestData extends NTPTime { _: Suite =>
 
   val assetPairGen = Gen.frequency((18, distinctPairGen), (1, assetIdGen(1).map(AssetPair(_, None))), (1, assetIdGen(2).map(AssetPair(None, _))))
 
-  val config = loadConfig(ConfigFactory.parseString(
-    """TN {
+  val config = loadConfig(ConfigFactory.parseString("""TN {
       |  directory: "/tmp/TN-test"
       |  matcher {
       |    enable: yes

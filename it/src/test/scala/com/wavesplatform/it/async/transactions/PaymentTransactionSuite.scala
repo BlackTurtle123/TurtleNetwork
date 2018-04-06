@@ -10,7 +10,7 @@ import scala.concurrent.duration._
 class PaymentTransactionSuite extends BaseTransactionSuite {
 
   private val paymentAmount = 5.TN
-  private val defaulFee = 1.TN
+  private val defaulFee     = 1.TN
 
   test("TN payment changes TN balances and eff.b.") {
     val f = for {
@@ -27,7 +27,8 @@ class PaymentTransactionSuite extends BaseTransactionSuite {
   }
 
   test("obsolete endpoints respond with BadRequest") {
-    val payment = PaymentRequest(5.TN, 1.TN, firstAddress, secondAddress)
+
+    val payment      = PaymentRequest(5.TN, 1.TN, firstAddress, secondAddress)
     val errorMessage = "This API is no longer supported"
     val f = for {
       _ <- assertBadRequestAndMessage(sender.postJson("/TN/payment/signature", payment), errorMessage)

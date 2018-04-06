@@ -6,8 +6,8 @@ import com.wavesplatform.it.util._
 class BurnTransactionSuite extends BaseTransactionSuite {
 
   private val defaultQuantity = 100000
-  private val decimals: Byte = 2
-  private val defaultFee = 1.TN
+  private val decimals: Byte  = 2
+  private val defaultFee      = 1.TN
 
   test("burning assets changes issuer's asset balance; issuer's TN balance is decreased by fee") {
     val (balance, effectiveBalance) = notMiner.accountBalances(firstAddress)

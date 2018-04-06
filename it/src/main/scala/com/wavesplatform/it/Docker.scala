@@ -207,47 +207,43 @@ class Docker(suiteConfig: Config = empty, tag: String = "", enableProfiling: Boo
         .map(_ => ())
   }
 
-  private def startNodeInternal(nodeConfig: Config): DockerNode = try {
-    val actualConfig = nodeConfig
-      .withFallback(suiteConfig)
-      .withFallback(NodeConfigs.DefaultConfigTemplate)
-      .withFallback(ConfigFactory.defaultApplication())
-      .withFallback(ConfigFactory.defaultReference())
-      .resolve()
+  private def startNodeInternal(nodeConfig: Config): DockerNode =
+    try {
+      val actualConfig = nodeConfig
+        .withFallback(suiteConfig)
+        .withFallback(NodeConfigs.DefaultConfigTemplate)
+        .withFallback(ConfigFactory.defaultApplication())
+        .withFallback(ConfigFactory.defaultReference())
+        .resolve()
 
-    val restApiPort = actualConfig.getString("TN.rest-api.port")
-    val networkPort = actualConfig.getString("TN.network.port")
-    val matcherApiPort = actualConfig.getString("TN.matcher.port")
+      val restApiPort    = actualConfig.getString("TN.rest-api.port")
+      val networkPort    = actualConfig.getString("TN.network.port")
+      val matcherApiPort = actualConfig.getString("TN.matcher.port")
 
-    val portBindings = new ImmutableMap.Builder[String, java.util.List[PortBinding]]()
-      .put(s"$ProfilerPort", singletonList(PortBinding.randomPort("0.0.0.0")))
-      .put(restApiPort, singletonList(PortBinding.randomPort("0.0.0.0")))
-      .put(networkPort, singletonList(PortBinding.randomPort("0.0.0.0")))
-      .put(matcherApiPort, singletonList(PortBinding.randomPort("0.0.0.0")))
-      .build()
+      val portBindings = new ImmutableMap.Builder[String, java.util.List[PortBinding]]()
+        .put(s"$ProfilerPort", singletonList(PortBinding.randomPort("0.0.0.0")))
+        .put(restApiPort, singletonList(PortBinding.randomPort("0.0.0.0")))
+        .put(networkPort, singletonList(PortBinding.randomPort("0.0.0.0")))
+        .put(matcherApiPort, singletonList(PortBinding.randomPort("0.0.0.0")))
+        .build()
 
       val hostConfig = HostConfig
         .builder()
         .portBindings(portBindings)
         .build()
 
-    val nodeName = actualConfig.getString("TN.network.node-name")
-    val nodeNumber = nodeName.replace("node", "").toInt
-    val ip = ipForNode(nodeNumber)
+      val nodeName   = actualConfig.getString("TN.network.node-name")
+      val nodeNumber = nodeName.replace("node", "").toInt
+      val ip         = ipForNode(nodeNumber)
 
-    val javaOptions = Option(System.getenv("CONTAINER_JAVA_OPTS")).getOrElse("")
-    val configOverrides = {
-      val common = s"$javaOptions ${renderProperties(asProperties(nodeConfig.withFallback(suiteConfig)))} " +
-        s"-Dlogback.stdout.level=TRACE -Dlogback.file.level=OFF -DTN.network.declared-address=$ip:$networkPort"
+      val javaOptions = Option(System.getenv("CONTAINER_JAVA_OPTS")).getOrElse("")
+      val configOverrides: String = {
+        var config = s"$javaOptions ${renderProperties(asProperties(nodeConfig.withFallback(suiteConfig)))} " +
+          s"-Dlogback.stdout.level=TRACE -Dlogback.file.level=OFF -DTN.network.declared-address=$ip:$networkPort "
 
-      val additional = profilerController().fold("") { _ =>
-        s"-agentpath:$ContainerRoot/libyjpagent.so=listen=0.0.0.0:$ProfilerPort," +
-          s"sampling,monitors,sessionname=TNNode,dir=$ContainerRoot/profiler,logdir=$ContainerRoot"
-      }
-
-        if (enableProfiling) {
-          config += s"-agentpath:/usr/local/YourKit-JavaProfiler-2018.04/bin/linux-x86-64/libyjpagent.so=port=$ProfilerPort,listen=all," +
-            s"sampling,monitors,sessionname=TNNode,dir=$ContainerRoot/profiler,logdir=$ContainerRoot "
+        if (profilerController().isDefined) {
+          config += s"-agentpath:$ContainerRoot/libyjpagent.so=listen=0.0.0.0:$ProfilerPort," +
+            s"sampling,monitors,sessionname=WavesNode,dir=$ContainerRoot/profiler,logdir=$ContainerRoot "
         }
 
     val containerConfig = ContainerConfig.builder()
@@ -600,10 +596,10 @@ class Docker(suiteConfig: Config = empty, tag: String = "", enableProfiling: Boo
 }
 
 object Docker {
-  private val ProfilerPort = 10001
+  private val ProfilerPort  = 10001
   private val ContainerRoot = Paths.get("/opt/TN")
-  private val jsonMapper = new ObjectMapper
-  private val propsMapper = new JavaPropsMapper
+  private val jsonMapper    = new ObjectMapper
+  private val propsMapper   = new JavaPropsMapper
 
   def apply(owner: Class[_]): Docker = new Docker(tag = owner.getSimpleName)
 

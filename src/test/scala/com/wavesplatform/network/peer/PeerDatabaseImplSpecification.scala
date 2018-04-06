@@ -12,16 +12,14 @@ import org.scalatest.{Matchers, path}
 
 class PeerDatabaseImplSpecification extends path.FreeSpecLike with Matchers {
 
-  private val config1 = ConfigFactory.parseString(
-    """TN.network {
+  private val config1   = ConfigFactory.parseString("""TN.network {
       |  file = null
       |  known-peers = []
       |  peers-data-residence-time: 2s
       |}""".stripMargin).withFallback(ConfigFactory.load()).resolve()
   private val settings1 = config1.as[NetworkSettings]("TN.network")
 
-  private val config2 = ConfigFactory.parseString(
-    """TN.network {
+  private val config2   = ConfigFactory.parseString("""TN.network {
       |  file = null
       |  known-peers = []
       |  peers-data-residence-time: 10s
@@ -123,9 +121,7 @@ class PeerDatabaseImplSpecification extends path.FreeSpecLike with Matchers {
         val prevDatabase = new PeerDatabaseImpl(prevSettings)
         prevDatabase.blacklist(address1, "I don't like it")
         prevDatabase.close()
-
-        val config = ConfigFactory.parseString(
-          s"""TN.network {
+        val config   = ConfigFactory.parseString(s"""TN.network {
              |  file = "$path"
              |  known-peers = []
              |  peers-data-residence-time: 100s
@@ -138,8 +134,7 @@ class PeerDatabaseImplSpecification extends path.FreeSpecLike with Matchers {
       }
 
       "should not add nodes to the blacklist" in {
-        val config = ConfigFactory.parseString(
-          s"""TN.network {
+        val config   = ConfigFactory.parseString(s"""TN.network {
              |  file = null
              |  known-peers = []
              |  peers-data-residence-time: 100s

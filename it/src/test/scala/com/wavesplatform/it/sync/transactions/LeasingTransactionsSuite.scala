@@ -8,20 +8,12 @@ import play.api.libs.json.Json
 import com.wavesplatform.it.sync._
 
 class LeasingTransactionsSuite extends BaseTransactionSuite with CancelAfterFailure {
-  private val errorMessage = "Reason: Cannot lease more than own"
+  private val defaultFee    = 2.TN
+  private val leasingAmount = 5.TN
 
-  test("leasing waves decreases lessor's eff.b. and increases lessee's eff.b.; lessor pays fee") {
-    for (v <- supportedVersions) {
-      val (balance1, eff1) = notMiner.accountBalances(firstAddress)
-      val (balance2, eff2) = notMiner.accountBalances(secondAddress)
-
-      val createdLeaseTxId = sender.lease(firstAddress, secondAddress, leasingAmount, leasingFee = minFee, version = v).id
-      nodes.waitForHeightAriseAndTxPresent(createdLeaseTxId)
-
-      notMiner.assertBalances(firstAddress, balance1 - minFee, eff1 - leasingAmount - minFee)
-      notMiner.assertBalances(secondAddress, balance2, eff2 + leasingAmount)
-    }
-  }
+  test("leasing TN decreases lessor's eff.b. and increases lessee's eff.b.; lessor pays fee") {
+    val (balance1, eff1) = notMiner.accountBalances(firstAddress)
+    val (balance2, eff2) = notMiner.accountBalances(secondAddress)
 
   test("cannot lease non-own waves") {
     for (v <- supportedVersions) {
@@ -39,15 +31,16 @@ class LeasingTransactionsSuite extends BaseTransactionSuite with CancelAfterFail
       val (balance1, eff1) = notMiner.accountBalances(firstAddress)
       val (balance2, eff2) = notMiner.accountBalances(secondAddress)
 
-      //secondAddress effective balance more than general balance
-      assertBadRequestAndResponse(sender.lease(secondAddress, firstAddress, balance2 + 1.waves, minFee, version = v), errorMessage)
-      nodes.waitForHeightArise()
+    //secondAddress effective balance more than general balance
+    assertBadRequestAndResponse(sender.lease(secondAddress, firstAddress, balance2 + 1.TN, defaultFee), "Reason: Cannot lease more than own")
+    nodes.waitForHeightArise()
 
       assertBadRequestAndResponse(sender.lease(firstAddress, secondAddress, balance1, minFee, version = v), errorMessage)
       nodes.waitForHeightArise()
 
-      assertBadRequestAndResponse(sender.lease(firstAddress, secondAddress, balance1 - minFee / 2, minFee, version = v), errorMessage)
-      nodes.waitForHeightArise()
+  test("can not make leasing without having enough TN for fee") {
+    val (balance1, eff1) = notMiner.accountBalances(firstAddress)
+    val (balance2, eff2) = notMiner.accountBalances(secondAddress)
 
       val newAddress = sender.createAddress()
       assertBadRequestAndResponse(sender.lease(newAddress, secondAddress, minFee, minFee, version = v), errorMessage)
@@ -137,11 +130,10 @@ class LeasingTransactionsSuite extends BaseTransactionSuite with CancelAfterFail
     }
   }
 
-  test("can not make leasing to yourself") {
-    for (v <- supportedVersions) {
-      val (balance1, eff1) = notMiner.accountBalances(firstAddress)
-      assertBadRequestAndResponse(sender.lease(firstAddress, firstAddress, balance1 + 1.waves, minFee, v), "Transaction to yourself")
-      nodes.waitForHeightArise()
+  test("can not make leasing without having enough your TN to self") {
+    val (balance1, eff1) = notMiner.accountBalances(firstAddress)
+    assertBadRequestAndResponse(sender.lease(firstAddress, firstAddress, balance1 + 1.TN, defaultFee), "Transaction to yourself")
+    nodes.waitForHeightArise()
 
       notMiner.assertBalances(firstAddress, balance1, eff1)
     }

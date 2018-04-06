@@ -41,6 +41,9 @@ class FeeCalculatorSpecification extends PropSpec with PropertyChecks with Match
       |    create-alias {
       |      TN = 600000
       |    }
+      |    data {
+      |      TN = 100000
+      |    }
       |  }
       |}""".stripMargin
 

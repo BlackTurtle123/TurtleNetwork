@@ -39,10 +39,6 @@ val network = SettingKey[Network]("network")
 network := { Network(sys.props.get("network")) }
 name := "TN"
 normalizedName := network.value.name
-<<<<<<< HEAD
-=======
-name := "TN"
->>>>>>> buildable node
 
 git.useGitDescribe := true
 git.uncommittedSignifier := Some("DIRTY")

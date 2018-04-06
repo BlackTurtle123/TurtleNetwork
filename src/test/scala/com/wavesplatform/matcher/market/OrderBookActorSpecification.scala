@@ -1,4 +1,4 @@
-package com.wavesplatform.matcher.market
+package com.TNplatform.matcher.market
 
 import java.util.concurrent.ConcurrentHashMap
 
@@ -31,24 +31,24 @@ class OrderBookActorSpecification extends MatcherSpec("OrderBookActor") with NTP
   private val md                                               = new ConcurrentHashMap[AssetPair, MarketStatus]
   var eventsProbe = TestProbe()
 
-  val pair = AssetPair(Some(ByteStr("BTC".getBytes)), Some(ByteStr("TN".getBytes)))
+  val pair                             = AssetPair(Some(ByteStr("BTC".getBytes)), Some(ByteStr("TN".getBytes)))
   val storedState: SnapshotStateReader = stub[SnapshotStateReader]
-  val hugeAmount = Long.MaxValue / 2
-  (storedState.accountPortfolio _).when(*).returns(Portfolio(hugeAmount, LeaseInfo.empty, Map(
-    ByteStr("BTC".getBytes) -> hugeAmount,
-    ByteStr("TN".getBytes) -> hugeAmount
-  )))
-  val issueTransaction: IssueTransaction = IssueTransaction.create(
-    PrivateKeyAccount("123".getBytes),
-    "MinerReward".getBytes,
-    Array.empty,
-    10000000000L,
-    8.toByte,
-    true,
-    100000L,
-    10000L).right.get
+  val hugeAmount                       = Long.MaxValue / 2
+  (storedState.portfolio _)
+    .when(*)
+    .returns(
+      Portfolio(hugeAmount,
+                LeaseBalance.empty,
+                Map(
+                  ByteStr("BTC".getBytes)   -> hugeAmount,
+                  ByteStr("TN".getBytes) -> hugeAmount
+                )))
+  val issueTransaction: IssueTransaction = IssueTransaction
+    .create(PrivateKeyAccount("123".getBytes), "MinerReward".getBytes, Array.empty, 10000000000L, 8.toByte, true, 100000L, 10000L)
+    .right
+    .get
 
-  (storedState.transactionInfo _).when(*).returns(Some((1, Some(issueTransaction))))
+  (storedState.transactionInfo _).when(*).returns(Some((1, issueTransaction)))
 
   val settings = matcherSettings.copy(account = MatcherAccount.address)
 

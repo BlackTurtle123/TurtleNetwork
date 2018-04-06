@@ -12,7 +12,7 @@ class WavesSettingsSpecification extends FlatSpec with Matchers {
     WavesSettings.fromConfig(ConfigFactory.parseFile(new File(s"TN-$configName.conf")).withFallback(ConfigFactory.load()))
 
   def testConfig(configName: String)(additionalChecks: WavesSettings => Unit = _ => ()) {
-    "WavesSettings" should s"read values from default config with $configName overrides" in {
+    "TNSettings" should s"read values from default config with $configName overrides" in {
       val settings = config(configName)
 
       settings.directory should be(home + "/TN")
@@ -34,8 +34,7 @@ class WavesSettingsSpecification extends FlatSpec with Matchers {
   testConfig("devnet")()
 
   "TNSettings" should "resolve folders correctly" in {
-    val config = loadConfig(ConfigFactory.parseString(
-      s"""TN {
+    val config = loadConfig(ConfigFactory.parseString(s"""TN {
          |  directory = "/xxx"
          |  data-directory = "/xxx/data"
          |  ntp-server = "example.com"

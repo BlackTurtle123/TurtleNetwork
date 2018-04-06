@@ -29,11 +29,13 @@ class CreateAliasTransactionDiffTest extends PropSpec
   } yield (genesis, aliasTx, sameAliasTx, sameAliasOtherSenderTx, anotherAliasTx)
 
   property("can create and resolve aliases preserving TN invariant") {
-    forAll(preconditionsAndAliasCreations) { case (gen, aliasTx, _, _, anotherAliasTx) =>
-      assertDiffAndState(db, Seq(TestBlock.create(Seq(gen, aliasTx))), TestBlock.create(Seq(anotherAliasTx))) { case (blockDiff, newState) =>
-        val totalPortfolioDiff = Monoid.combineAll(blockDiff.txsDiff.portfolios.values)
-        totalPortfolioDiff.balance shouldBe 0
-        totalPortfolioDiff.effectiveBalance shouldBe 0
+    forAll(preconditionsAndAliasCreations) {
+      case (gen, aliasTx, _, _, anotherAliasTx) =>
+        assertDiffAndState(Seq(TestBlock.create(Seq(gen, aliasTx))), TestBlock.create(Seq(anotherAliasTx))) {
+          case (blockDiff, newState) =>
+            val totalPortfolioDiff = Monoid.combineAll(blockDiff.portfolios.values)
+            totalPortfolioDiff.balance shouldBe 0
+            totalPortfolioDiff.effectiveBalance shouldBe 0
 
         val senderAcc = anotherAliasTx.sender.toAddress
         blockDiff.txsDiff.aliases shouldBe Map(anotherAliasTx.alias -> senderAcc)

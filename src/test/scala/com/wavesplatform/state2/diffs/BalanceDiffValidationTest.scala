@@ -27,11 +27,11 @@ class BalanceDiffValidationTest extends PropSpec
       transfer2 = createWavesTransfer(master2, recipient, amount, fee, ts).right.get
     } yield (gen1, gen2, transfer1, transfer2)
 
-
-    forAll(preconditionsAndPayment) { case ((gen1, gen2, transfer1, transfer2)) =>
-      assertDiffEi(db, Seq(TestBlock.create(Seq(gen1, gen2, transfer1))), TestBlock.create(Seq(transfer2))) { blockDiffEi =>
-        blockDiffEi should produce("negative TN balance")
-      }
+    forAll(preconditionsAndPayment) {
+      case ((gen1, gen2, transfer1, transfer2)) =>
+        assertDiffEi(Seq(TestBlock.create(Seq(gen1, gen2, transfer1))), TestBlock.create(Seq(transfer2))) { blockDiffEi =>
+          blockDiffEi should produce("negative TN balance")
+        }
     }
   }
 

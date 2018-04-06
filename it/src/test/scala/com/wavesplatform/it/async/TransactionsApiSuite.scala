@@ -20,7 +20,7 @@ class TransactionsApiSuite extends BaseTransactionSuite {
   test("height should always be reported for transactions") {
     val f = for {
       txId <- sender.transfer(firstAddress, secondAddress, 1.TN, fee = 1.TN).map(_.id)
-      _ <- nodes.waitForHeightAraiseAndTxPresent(txId)
+      _    <- nodes.waitForHeightAriseAndTxPresent(txId)
 
       jsv1 <- sender.get(s"/transactions/info/$txId").as[JsValue]
       hasPositiveHeight1 = (jsv1 \ "height").asOpt[Int].map(_ > 0)
@@ -90,74 +90,64 @@ class TransactionsApiSuite extends BaseTransactionSuite {
   }
 
   test("/transactions/sign should produce issue/reissue/burn/transfer transactions that are good for /transactions/broadcast") {
-    val issueId = signAndBroadcast(Json.obj(
-      "type" -> 3,
-      "name" -> "Gigacoin",
-      "quantity" -> 100.TN,
-      "description" -> "Gigacoin",
-      "sender" -> firstAddress,
-      "decimals" -> 8,
-      "reissuable" -> true,
-      "fee" -> 1.TN))
 
-    signAndBroadcast(Json.obj(
-      "type" -> 5,
-      "quantity" -> 200.TN,
-      "assetId" -> issueId,
-      "sender" -> firstAddress,
-      "reissuable" -> false,
-      "fee" -> 1.TN))
+    val issueId = signAndBroadcast(
+      Json.obj("type"        -> 3,
+               "name"        -> "Gigacoin",
+               "quantity"    -> 100.TN,
+               "description" -> "Gigacoin",
+               "sender"      -> firstAddress,
+               "decimals"    -> 8,
+               "reissuable"  -> true,
+               "fee"         -> 1.TN))
 
-    signAndBroadcast(Json.obj(
-      "type" -> 6,
-      "quantity" -> 100.TN,
-      "assetId" -> issueId,
-      "sender" -> firstAddress,
-      "fee" -> 1.TN))
+    signAndBroadcast(
+      Json.obj("type" -> 5, "quantity" -> 200.TN, "assetId" -> issueId, "sender" -> firstAddress, "reissuable" -> false, "fee" -> 1.TN))
 
-    signAndBroadcast(Json.obj(
-      "type" -> 4,
-      "sender" -> firstAddress,
-      "recipient" -> secondAddress,
-      "fee" -> 100000,
-      "assetId" -> issueId,
-      "amount" -> 1.TN,
-      "attachment" -> Base58.encode("asset transfer".getBytes)))
+    signAndBroadcast(Json.obj("type" -> 6, "quantity" -> 100.TN, "assetId" -> issueId, "sender" -> firstAddress, "fee" -> 1.TN))
+
+    signAndBroadcast(
+      Json.obj(
+        "type"       -> 4,
+        "sender"     -> firstAddress,
+        "recipient"  -> secondAddress,
+        "fee"        -> 100000,
+        "assetId"    -> issueId,
+        "amount"     -> 1.TN,
+        "attachment" -> Base58.encode("asset transfer".getBytes)
+      ))
   }
 
   test("/transactions/sign should produce transfer transaction that is good for /transactions/broadcast") {
-    signAndBroadcast(Json.obj(
-      "type" -> 4,
-      "sender" -> firstAddress,
-      "recipient" -> secondAddress,
-      "fee" -> 100000,
-      "amount" -> 1.TN,
-      "attachment" -> Base58.encode("falafel".getBytes)))
+    signAndBroadcast(
+      Json.obj("type"       -> 4,
+               "sender"     -> firstAddress,
+               "recipient"  -> secondAddress,
+               "fee"        -> 100000,
+               "amount"     -> 1.TN,
+               "attachment" -> Base58.encode("falafel".getBytes)))
   }
 
   test("/transactions/sign should produce mass transfer transaction that is good for /transactions/broadcast") {
-    signAndBroadcast(Json.obj(
-      "type" -> 11,
-      "sender" -> firstAddress,
-      "transfers" -> Json.toJson(Seq(Transfer(secondAddress, 1.TN), Transfer(thirdAddress, 2.TN))),
-      "fee" -> 200000,
-      "attachment" -> Base58.encode("masspay".getBytes)),
-    usesProofs = true)
+    signAndBroadcast(
+      Json.obj(
+        "type"       -> 11,
+        "version"    -> 1,
+        "sender"     -> firstAddress,
+        "transfers"  -> Json.toJson(Seq(Transfer(secondAddress, 1.TN), Transfer(thirdAddress, 2.TN))),
+        "fee"        -> 200000,
+        "attachment" -> Base58.encode("masspay".getBytes)
+      ),
+      usesProofs = true
+    )
   }
 
   test("/transactions/sign should produce lease/cancel transactions that are good for /transactions/broadcast") {
-    val leaseId = signAndBroadcast(Json.obj(
-      "type" -> 8,
-      "sender" -> firstAddress,
-      "amount" -> 1.TN,
-      "recipient" -> secondAddress,
-      "fee" -> 100000))
+    val leaseId =
+      signAndBroadcast(Json.obj("type" -> 8, "sender" -> firstAddress, "amount" -> 1.TN, "recipient" -> secondAddress, "fee" -> 100000))
 
-    signAndBroadcast(Json.obj(
-      "type" -> 9,
-      "sender" -> firstAddress,
-      "txId" -> leaseId,
-      "fee" -> 100000))
+    signAndBroadcast(Json.obj("type" -> 9, "sender" -> firstAddress, "txId" -> leaseId, "fee" -> 100000))
+
   }
 
   test("/transactions/sign should produce alias transaction that is good for /transactions/broadcast") {
@@ -189,6 +179,9 @@ class TransactionsApiSuite extends BaseTransactionSuite {
   }
 
   test("reporting MassTransfer transactions") {
+
+    implicit val mtFormat: Format[MassTransferRequest] = Json.format[MassTransferRequest]
+
     val transfers = List(Transfer(firstAddress, 5.TN), Transfer(secondAddress, 2.TN), Transfer(thirdAddress, 3.TN))
     val f = for {
       txId <- sender.massTransfer(firstAddress, transfers, 250000).map(_.id)
@@ -199,19 +192,23 @@ class TransactionsApiSuite extends BaseTransactionSuite {
       _ = assert(txInfo.transfers.size == 3)
 
       // /transactions/address should return complete transfers list for the sender...
-      txSender <- sender.get(s"/transactions/address/$firstAddress/limit/1").as[JsArray].map(_.apply(0)(0))
-      _ = assert(txSender.as[MassTransferRequest].transfers.size == 3)
-      _ = assert((txSender \ "transferCount").as[Int] == 3)
-      _ = assert((txSender \ "totalAmount").as[Long] == 10.TN)
+
+      txSender <- sender.get(s"/transactions/address/$firstAddress/limit/10").as[JsArray].map(js => extractTransactionByType(js.apply(0), 11).head)
+      _                   = assert(txSender.as[MassTransferRequest].transfers.size == 3)
+      _                   = assert((txSender \ "transferCount").as[Int] == 3)
+      _                   = assert((txSender \ "totalAmount").as[Long] == 10.TN)
       transfersAfterTrans = txSender.as[MassTransferRequest].transfers
 
       _ = assert((transfers.equals(transfersAfterTrans)))
 
       // ...and compact list for recipients
-      txRecipient <- sender.get(s"/transactions/address/$secondAddress/limit/1").as[JsArray].map(_.apply(0)(0))
-      _ = assert(txRecipient.as[MassTransferRequest].transfers.size == 1)
-      _ = assert((txRecipient \ "transferCount").as[Int] == 3)
-      _ = assert((txRecipient \ "totalAmount").as[Long] == 10.TN)
+      txRecipient <- sender
+        .get(s"/transactions/address/$secondAddress/limit/10")
+        .as[JsArray]
+        .map(js => extractTransactionByType(js.apply(0), 11).head)
+      _                = assert(txRecipient.as[MassTransferRequest].transfers.size == 1)
+      _                = assert((txRecipient \ "transferCount").as[Int] == 3)
+      _                = assert((txRecipient \ "totalAmount").as[Long] == 10.TN)
       transferToSecond = txRecipient.as[MassTransferRequest].transfers.head
 
       _ = assert(transfers contains transferToSecond)

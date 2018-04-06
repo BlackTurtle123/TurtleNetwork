@@ -17,8 +17,9 @@ class MicroblocksGenerationSuite extends FreeSpec with Matchers with TransferSen
   private val maxTxs = 2000
 
   override protected val nodeConfigs: Seq[Config] = NodeConfigs.newBuilder
-    .overrideBase(_.raw(
-      s"""TN {
+    .overrideBase(
+      _.raw(
+        s"""TN {
          |  network.enable-peers-exchange = no
          |
          |  miner {

@@ -278,6 +278,240 @@ class MatcherTestSuite extends FreeSpec with Matchers with BeforeAndAfterAll wit
     )
   }
 
+  "trader should be able to place a buy TN for asset order without having TN" in {
+    // Bob issues new asset
+    val bobAssetQuantity = 10000
+    val bobAssetName     = "BobCoin2"
+    val bobAsset         = issueAsset(bobNode, bobAssetName, bobAssetQuantity)
+    val bobAssetId       = ByteStr.decodeBase58(bobAsset).get
+    val bobWavesPair = AssetPair(
+      amountAsset = Some(bobAssetId),
+      priceAsset = None
+    )
+
+    Await.result(matcherNode.waitForHeightArise, 1.minute)
+    waitForAssetBalance(bobNode, bobAsset, bobAssetQuantity)
+    waitForAssetBalance(matcherNode, bobAsset, 0)
+    waitForAssetBalance(aliceNode, bobAsset, 0)
+
+    // Bob wants to sell all own assets for 1 Wave
+    def bobOrder = prepareOrder(bobNode, matcherNode, bobWavesPair, OrderType.SELL, 1 * Waves * Order.PriceConstant, bobAssetQuantity)
+
+    val (sellId, _) = matcherPlaceOrder(matcherNode, bobOrder)
+    waitForOrderStatus(matcherNode, bobAsset, sellId, "Accepted")
+
+    // Bob moves all TN to Alice
+    val bobBalance     = Await.result(matcherNode.balance(bobNode.address), 1.minute).balance
+    val transferAmount = bobBalance - TransactionFee
+    transfer(bobNode, aliceNode, None, transferAmount, wait = true)
+
+    val newBobBalance = Await.result(matcherNode.balance(bobNode.address), 1.minute).balance
+    newBobBalance shouldBe 0
+
+    // Order should stay accepted
+    checkOrderStatusDontChange(matcherNode, bobAsset, sellId, "Accepted")
+
+    // Cleanup
+    Await.ready(matcherNode.waitForHeightArise, 1.minute)
+    matcherCancelOrder(bobNode, bobWavesPair, sellId) should be("OrderCanceled")
+    transfer(aliceNode, bobNode, None, transferAmount, wait = true)
+    Await.ready(matcherNode.waitForHeightArise, 1.minute)
+  }
+
+  "owner moves assets/TN to another account and order become an invalid" - {
+    val bobAssetName             = "BobCoin3"
+    var bobAssetIdRaw: String    = ""
+    var bobAssetId: ByteStr      = ByteStr.empty
+    var bobWavesPair: AssetPair  = AssetPair(None, None)
+    var twoAssetsPair: AssetPair = AssetPair(None, None)
+
+    "prepare" in {
+      // Bob issues a new asset
+      val bobAssetQuantity = 10000
+      bobAssetIdRaw = issueAsset(bobNode, bobAssetName, bobAssetQuantity)
+      bobAssetId = ByteStr.decodeBase58(bobAssetIdRaw).get
+      bobWavesPair = AssetPair(
+        amountAsset = Some(bobAssetId),
+        priceAsset = None
+      )
+
+      twoAssetsPair =
+        if (MatcherActor.compare(Some(bobAssetId.arr), Some(aliceAssetId.arr)) < 0)
+          AssetPair(
+            amountAsset = Some(aliceAssetId),
+            priceAsset = Some(bobAssetId)
+          )
+        else
+          AssetPair(
+            amountAsset = Some(bobAssetId),
+            priceAsset = Some(aliceAssetId)
+          )
+
+      Await.result(matcherNode.waitForHeightArise, 1.minute)
+      waitForAssetBalance(bobNode, bobAssetIdRaw, bobAssetQuantity)
+    }
+
+    // Could not work sometimes because of NODE-546
+    "order with assets" - {
+      "moved assets, insufficient assets" in {
+        val oldestOrderId = bobPlacesAssetOrder(8000)
+        val newestOrderId = bobPlacesAssetOrder(1000)
+
+        transfer(bobNode, aliceNode, Some(bobAssetId), 3050)
+
+        withClue(s"The oldest order '$oldestOrderId' was cancelled") {
+          waitOrderCancelled(oldestOrderId)
+        }
+        withClue(s"The newest order '$newestOrderId' is still active") {
+          checkBobOrderActive(newestOrderId)
+        }
+
+        // Cleanup
+        Await.ready(matcherNode.waitForHeightArise, 1.minute)
+        matcherCancelOrder(bobNode, twoAssetsPair, newestOrderId) should be("OrderCanceled")
+        transfer(aliceNode, bobNode, Some(bobAssetId), 3050, wait = true)
+        Await.ready(matcherNode.waitForHeightArise, 1.minute)
+      }
+
+      "leased TN, insufficient fee" in {
+        val bobBalance    = Await.result(matcherNode.balance(bobNode.address), 1.minute).balance
+        val oldestOrderId = bobPlacesAssetOrder(1000)
+        val newestOrderId = bobPlacesAssetOrder(1000)
+
+        // TransactionFee for leasing, MatcherFee for one order
+        val leaseAmount = bobBalance - TransactionFee - MatcherFee
+        val leaseId     = lease(bobNode, aliceNode, leaseAmount)
+
+        withClue(s"The oldest order '$oldestOrderId' was cancelled") {
+          waitOrderCancelled(oldestOrderId)
+        }
+        withClue(s"The newest order '$newestOrderId' is still active") {
+          checkBobOrderActive(newestOrderId)
+        }
+
+        // Cleanup
+        Await.ready(matcherNode.waitForHeightArise, 1.minute)
+        matcherCancelOrder(bobNode, twoAssetsPair, newestOrderId) should be("OrderCanceled")
+        cancelLease(bobNode, leaseId, leaseAmount)
+        Await.ready(matcherNode.waitForHeightArise, 1.minute)
+      }
+
+      "moved TN, insufficient fee" in {
+        val bobBalance    = Await.result(matcherNode.balance(bobNode.address), 1.minute).balance
+        val oldestOrderId = bobPlacesAssetOrder(1000)
+        val newestOrderId = bobPlacesAssetOrder(1000)
+
+        // TransactionFee for leasing, MatcherFee for one order
+        val transferAmount = bobBalance - TransactionFee - MatcherFee
+        transfer(bobNode, aliceNode, None, transferAmount)
+
+        withClue(s"The oldest order '$oldestOrderId' was cancelled") {
+          waitOrderCancelled(oldestOrderId)
+        }
+        withClue(s"The newest order '$newestOrderId' is still active") {
+          checkBobOrderActive(newestOrderId)
+        }
+
+        // Cleanup
+        Await.ready(matcherNode.waitForHeightArise, 1.minute)
+        matcherCancelOrder(bobNode, twoAssetsPair, newestOrderId) should be("OrderCanceled")
+        transfer(aliceNode, bobNode, None, transferAmount, wait = true)
+        Await.ready(matcherNode.waitForHeightArise, 1.minute)
+      }
+    }
+
+    "order with TN" - {
+      "leased TN, insufficient fee" in {
+        // Amount of TN in order is smaller than fee
+        val bobBalance = Await.result(matcherNode.balance(bobNode.address), 1.minute).balance
+
+        val price   = TransactionFee / 2
+        val orderId = bobPlacesWavesOrder(price * Order.PriceConstant, 1)
+
+        val leaseAmount = bobBalance - TransactionFee - price
+        val leaseId     = lease(bobNode, aliceNode, leaseAmount)
+
+        withClue(s"The order '$orderId' was cancelled") {
+          waitOrderCancelled(orderId)
+        }
+
+        // Cleanup
+        Await.ready(matcherNode.waitForHeightArise, 1.minute)
+        cancelLease(bobNode, leaseId, leaseAmount)
+        Await.ready(matcherNode.waitForHeightArise, 1.minute)
+      }
+
+      "leased TN, insufficient TN" in {
+        val bobBalance = Await.result(matcherNode.balance(bobNode.address), 1.minute).balance
+
+        val price   = 1 * Waves
+        val orderId = bobPlacesWavesOrder(price * Order.PriceConstant, 1)
+
+        val leaseAmount = bobBalance - TransactionFee - price / 2
+        val leaseId     = lease(bobNode, aliceNode, leaseAmount)
+
+        withClue(s"The order '$orderId' was cancelled") {
+          waitOrderCancelled(orderId)
+        }
+
+        // Cleanup
+        Await.ready(matcherNode.waitForHeightArise, 1.minute)
+        cancelLease(bobNode, leaseId, leaseAmount)
+        Await.ready(matcherNode.waitForHeightArise, 1.minute)
+      }
+
+      "moved TN, insufficient fee" in {
+        // Amount of waves in order is smaller than fee
+        val bobBalance = Await.result(matcherNode.balance(bobNode.address), 1.minute).balance
+
+        val price   = TransactionFee / 2
+        val orderId = bobPlacesWavesOrder(price * Order.PriceConstant, 1)
+
+        val transferAmount = bobBalance - TransactionFee - price
+        transfer(bobNode, aliceNode, None, transferAmount)
+
+        withClue(s"The order '$orderId' was cancelled") {
+          waitOrderCancelled(orderId)
+        }
+
+        // Cleanup
+        Await.ready(matcherNode.waitForHeightArise, 1.minute)
+        transfer(aliceNode, bobNode, None, transferAmount)
+        Await.ready(matcherNode.waitForHeightArise, 1.minute)
+      }
+    }
+
+    def bobPlacesWavesOrder(price: Long, amount: Int): String = {
+      val bobOrder = prepareOrder(bobNode, matcherNode, bobWavesPair, OrderType.BUY, price, amount)
+      val (id, _)  = matcherPlaceOrder(matcherNode, bobOrder)
+      waitForOrderStatus(matcherNode, bobAssetIdRaw, id, "Accepted")
+      id
+    }
+
+    def bobPlacesAssetOrder(bobCoinAmount: Int): String = {
+      val bobOrder = if (twoAssetsPair.amountAsset.contains(bobAssetId)) {
+        prepareOrder(bobNode, matcherNode, twoAssetsPair, OrderType.SELL, 1 * Order.PriceConstant, bobCoinAmount)
+      } else {
+        prepareOrder(bobNode, matcherNode, twoAssetsPair, OrderType.BUY, bobCoinAmount * Order.PriceConstant, 1)
+      }
+      val (id, _) = matcherPlaceOrder(matcherNode, bobOrder)
+      waitForOrderStatus(matcherNode, bobAssetIdRaw, id, "Accepted")
+      id
+    }
+
+    def waitOrderCancelled(orderId: String): Unit = {
+      val task = matcherNode.waitFor[MatcherStatusResponse](s"Order '$orderId' is cancelled")(_.getOrderStatus(bobAssetIdRaw, orderId),
+                                                                                              _.status == "Cancelled",
+                                                                                              1.second)
+      Await.result(task, 1.minute)
+    }
+
+    def checkBobOrderActive(orderId: String): Unit = {
+      val newestOrderStatus = matcherNode.getOrderStatus(bobAssetIdRaw, orderId)
+      Await.result(newestOrderStatus, 10.seconds).status shouldBe "Accepted"
+    }
+  }
+
   private def matcherExpectOrderPlacementRejected(order: Order, expectedStatusCode: Int, expectedStatus: String): Boolean = {
     val futureResult = matcherNode.expectIncorrectOrderPlacement(order, expectedStatusCode, expectedStatus)
 
@@ -324,7 +558,7 @@ object MatcherTestSuite {
   val MatcherFee: Long = 300000
   val TransactionFee: Long = 300000
 
-  val Waves: Long = 100000000L
+  val TN: Long = 100000000L
 
   val Configs: Seq[Config] = Seq(matcherConfig.withFallback(Default.head)) ++
     Random.shuffle(Default.tail.init).take(2).map(nonGeneratingPeersConfig.withFallback(_)) ++

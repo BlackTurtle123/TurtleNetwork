@@ -42,24 +42,23 @@ class OrderValidatorSpecification
   "OrderValidator" should {
 
     "allows buy TN for BTC without balance for order fee" in {
-      validateNewOrderTest(Portfolio(0, LeaseInfo.empty, Map(
-        wbtc -> 10 * Constants.UnitsInWave
-      ))) shouldBe an[Right[_, _]]
-    }
-
-    "does not allow buy TN for BTC when assets number is negative" in {
-      validateNewOrderTest(Portfolio(0, LeaseInfo.empty, Map(
-        wbtc -> -10 * Constants.UnitsInWave
-      ))) shouldBe a[Left[_, _]]
+      validateNewOrderTest(
+        Portfolio(0,
+                  LeaseBalance.empty,
+                  Map(
+                    wbtc -> 10 * Constants.UnitsInWave
+                  ))) shouldBe an[Right[_, _]]
     }
   }
 
-  private def portfolioTest(p: Portfolio)(f: (OrderValidator, Blockchain) => Any): Unit = {
-    val bc = stub[Blockchain]
-    (bc.assetScript _).when(wbtc).returns(None)
-    (bc.assetDescription _).when(wbtc).returns(mkAssetDescription(8)).anyNumberOfTimes()
-    val transactionCreator = new ExchangeTransactionCreator(bc, MatcherAccount, matcherSettings, ntpTime)
-    f(new OrderValidator(db, bc, transactionCreator, _ => p, Right(_), matcherSettings, MatcherAccount, ntpTime), bc)
+    "does not allow buy TN for BTC when assets number is negative" in {
+      validateNewOrderTest(
+        Portfolio(0,
+                  LeaseBalance.empty,
+                  Map(
+                    wbtc -> -10 * Constants.UnitsInWave
+                  ))) shouldBe a[Left[_, _]]
+    }
   }
 
   private def settingsTest(settings: MatcherSettings)(f: OrderValidator => Any): Unit = {
