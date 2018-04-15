@@ -40,8 +40,8 @@ class OrderBookActorSpecification extends MatcherSpec("OrderBookActor") with NTP
       Portfolio(hugeAmount,
                 LeaseBalance.empty,
                 Map(
-                  ByteStr("BTC".getBytes)   -> hugeAmount,
-                  ByteStr("TN".getBytes) -> hugeAmount
+                  ByteStr("BTC".getBytes) -> hugeAmount,
+                  ByteStr("TN".getBytes)  -> hugeAmount
                 )))
   val issueTransaction: IssueTransaction = IssueTransaction
     .create(PrivateKeyAccount("123".getBytes), "MinerReward".getBytes, Array.empty, 10000000000L, 8.toByte, true, 100000L, 10000L)

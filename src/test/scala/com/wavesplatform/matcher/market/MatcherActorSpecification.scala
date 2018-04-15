@@ -93,7 +93,8 @@ class MatcherActorSpecification
 
   "GetMarketsResponse" should {
     "serialize to json" in {
-      val waves  = "TN"
+      val waves = "TN"
+
       val a1Name = "BITCOIN"
       val a1 = strToSomeAssetId(a1Name)
 

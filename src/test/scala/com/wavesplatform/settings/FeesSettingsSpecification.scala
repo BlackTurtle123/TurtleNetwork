@@ -112,8 +112,7 @@ class FeesSettingsSpecification extends FlatSpec with Matchers {
   it should "override values from default config" in {
     val defaultConfig = ConfigFactory.load()
 
-
-    val config        = ConfigFactory.parseString("""
+    val config   = ConfigFactory.parseString("""
         |TN.fees {
         |  issue {
         |    TN = 200000000
@@ -151,7 +150,7 @@ class FeesSettingsSpecification extends FlatSpec with Matchers {
         |  }
         |}
       """.stripMargin).withFallback(defaultConfig).resolve()
-    val settings      = FeesSettings.fromConfig(config)
+    val settings = FeesSettings.fromConfig(config)
     settings.fees.size should be(11)
     settings.fees(3).toSet should equal(Set(FeeSettings("TN", 200000000)))
     settings.fees(4).toSet should equal(Set(FeeSettings("TN", 300000), FeeSettings("6MPKrD5B7GrfbciHECg1MwdvRUhRETApgNZspreBJ8JL", 1)))
