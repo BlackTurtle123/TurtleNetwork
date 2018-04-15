@@ -246,15 +246,10 @@ class Docker(suiteConfig: Config = empty, tag: String = "", enableProfiling: Boo
             s"sampling,monitors,sessionname=WavesNode,dir=$ContainerRoot/profiler,logdir=$ContainerRoot "
         }
 
-    val containerConfig = ContainerConfig.builder()
-      .image("com.wavesplatform/it:latest")
-      .exposedPorts(s"$ProfilerPort", restApiPort, networkPort, matcherApiPort)
-      .networkingConfig(ContainerConfig.NetworkingConfig.create(Map(
-        wavesNetwork.name() -> endpointConfigFor(nodeName)
-      ).asJava))
-      .hostConfig(hostConfig)
-      .env(s"TN_OPTS=$configOverrides")
-      .build()
+        val withAspectJ = Option(System.getenv("WITH_ASPECTJ")).fold(false)(_.toBoolean)
+        if (withAspectJ) config += s"-javaagent:$ContainerRoot/aspectjweaver.jar "
+        config
+      }
 
       val containerConfig = ContainerConfig
         .builder()

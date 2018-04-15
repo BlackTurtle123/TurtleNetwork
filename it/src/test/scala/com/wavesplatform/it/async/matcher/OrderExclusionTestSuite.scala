@@ -92,8 +92,7 @@ object OrderExclusionTestSuite {
 
   import NodeConfigs.Default
 
-  private val matcherConfig = ConfigFactory.parseString(
-    s"""
+  private val matcherConfig = ConfigFactory.parseString(s"""
        |TN.matcher {
        |  enable=yes
        |  account="3Hm3LGoNPmw1VTZ3eRA2pAfeQPhnaBm6YFC"
