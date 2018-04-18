@@ -93,7 +93,7 @@ case class DebugApiRoute(settings: RestAPISettings,
         value = "Json with data",
         required = true,
         paramType = "body",
-        dataType = "scorex.TN.http.DebugMessage",
+        dataType = "scorex.waves.http.DebugMessage",
         defaultValue = "{\n\t\"message\": \"foo\"\n}"
       )
     ))
