@@ -233,21 +233,38 @@ object CommonValidation {
       case _                               => 0
     }
 
-    def feeAfterSmartAccounts(inputFee: FeeInfo): Either[ValidationError, FeeInfo] = Right {
-      val extraFee                  = smartAccountScriptsCount * ScriptExtraFee
-      val (feeAssetInfo, feeAmount) = inputFee
-      (feeAssetInfo, feeAmount + extraFee)
+    def restFeeAfterSmartTokens(inputFee: (Option[AssetId], Long)): Either[ValidationError, (Option[AssetId], Long)] =
+      if (isSmartToken) {
+        val (feeAssetId, feeAmount) = inputFee
+        for {
+          _ <- Either.cond(feeAssetId.isEmpty, (), GenericError("Transactions with smart tokens require TN as fee"))
+          restFeeAmount = feeAmount - ScriptExtraFee
+          _ <- Either.cond(
+            restFeeAmount >= 0,
+            (),
+            InsufficientFee(s"This transaction with a smart token requires ${-restFeeAmount} additional fee")
+          )
+        } yield (feeAssetId, restFeeAmount)
+      } else Right(inputFee)
+
+    def hasSmartAccountScript: Boolean = tx match {
+      case tx: Transaction with Authorized => blockchain.accountScript(tx.sender).isDefined
+      case _                               => false
     }
 
-    feeAfterSponsorship(tx.assetFee._1)
-      .flatMap(feeAfterSmartTokens)
-      .flatMap(feeAfterSmartAccounts)
-      .map {
-        case (Some((assetId, assetInfo)), amountInWaves) =>
-          (Some(assetId), Sponsorship.fromWaves(amountInWaves, assetInfo.sponsorship), amountInWaves)
-        case (None, amountInWaves) => (None, amountInWaves, amountInWaves)
-      }
-  }
+    def restFeeAfterSmartAccounts(inputFee: (Option[AssetId], Long)): Either[ValidationError, (Option[AssetId], Long)] =
+      if (hasSmartAccountScript) {
+        val (feeAssetId, feeAmount) = inputFee
+        for {
+          _ <- Either.cond(feeAssetId.isEmpty, (), GenericError("Transactions from scripted accounts require TN as fee"))
+          restFeeAmount = feeAmount - ScriptExtraFee
+          _ <- Either.cond(
+            restFeeAmount >= 0,
+            (),
+            InsufficientFee(s"Scripted account requires ${-restFeeAmount} additional fee for this transaction")
+          )
+        } yield (feeAssetId, restFeeAmount)
+      } else Right(inputFee)
 
   def checkFee(blockchain: Blockchain, fs: FunctionalitySettings, height: Int, tx: Transaction): Either[ValidationError, Unit] = {
     if (height >= Sponsorship.sponsoredFeesSwitchHeight(blockchain, fs)) {
@@ -266,6 +283,7 @@ object CommonValidation {
     } else {
       Either.cond(tx.assetFee._2 > 0 || !tx.isInstanceOf[Authorized], (), GenericError(s"Fee must be positive."))
     }
+
   }
 
   def cond[A](c: Boolean)(a: A, b: A): A = if (c) a else b
