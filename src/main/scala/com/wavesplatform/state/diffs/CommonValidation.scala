@@ -225,6 +225,7 @@ object CommonValidation {
         Right { (feeAssetInfo, feeAmount + ScriptExtraFee * (1 + assetsCount)) }
       } else {
         Right { (feeAssetInfo, feeAmount + ScriptExtraFee * assetsCount) }
+
       }
     }
 
