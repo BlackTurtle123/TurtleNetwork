@@ -100,6 +100,7 @@ lazy val itTestsCommonSettings: Seq[Def.Setting[_]] = Seq(
               "-DTN.it.logging.appender=FILE",
               s"-DTN.it.logging.dir=${logDirectoryValue / suite.name.replaceAll("""(\w)\w*\.""", "$1.")}",
               s"-DTN.profiling.yourKitDir=$yourKitRedistDirValue"
+
             ) ++ javaOptionsValue,
             connectInput = false,
             envVars = envVarsValue
