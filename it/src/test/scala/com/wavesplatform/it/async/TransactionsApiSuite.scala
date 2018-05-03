@@ -156,6 +156,7 @@ class TransactionsApiSuite extends BaseTransactionSuite {
       "sender" -> firstAddress,
       "alias" -> "myalias",
       "fee" -> 100000))
+
   }
 
   private def signAndBroadcast(json: JsObject, usesProofs: Boolean = false): String = {

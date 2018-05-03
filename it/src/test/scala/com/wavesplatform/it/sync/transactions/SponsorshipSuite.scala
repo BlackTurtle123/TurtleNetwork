@@ -66,7 +66,12 @@ class SponsorshipSuite extends FreeSpec with NodesFromDocker with Matchers with 
       assert(!sponsorAssetId.isEmpty)
       assert(!sponsorId.isEmpty)
       assertSponsorship(sponsorAssetId, 1 * Token)
-      assertMinAssetFee(sponsorId, 1 * Token)
+      assertMinAssetFee(sponsorId, JsNumber(1 * Token))
+      miner.assertAssetBalance(sponsor.address, sponsorAssetId, sponsorAssetTotal / 2)
+      miner.assertBalances(sponsor.address, sponsorWavesBalance - 2.TN - minWavesFee)
+      miner.assertAssetBalance(alice.address, sponsorAssetId, sponsorAssetTotal / 2)
+
+\
     }
 
     "check balance before test accounts balances" in {
@@ -79,22 +84,12 @@ class SponsorshipSuite extends FreeSpec with NodesFromDocker with Matchers with 
       assetInfo.sponsorBalance shouldBe Some(sponsor.accountBalances(sponsor.address)._2)
     }
 
-    "sender cannot make transfer" - {
-      "invalid tx timestamp" in {
-
-        def invalidTx(timestamp: Long): SponsorFeeTransaction.TransactionT =
-          SponsorFeeTransaction
-            .selfSigned(1, sponsor.privateKey, ByteStr.decodeBase58(sponsorAssetId).get, Some(SmallFee), minFee, timestamp + 1.day.toMillis)
-            .right
-            .get
-
-        val iTx = invalidTx(timestamp = System.currentTimeMillis + 1.day.toMillis)
-        assertBadRequestAndResponse(sponsor.broadcastRequest(iTx.json()), "Transaction timestamp .* is more than .*ms in the future")
-      }
+    "not enought balance for fee" in {
+      assertBadRequestAndResponse(bob.transfer(bob.address, alice.address, 1.TN, SmallFee, None, Some(sponsorAssetId)), "unavailable funds")
     }
 
-    val minerWavesBalanceAfterFirstXferTest   = minerWavesBalance + 2.waves + minFee + CommonValidation.FeeUnit * SmallFee / minSponsorFee
-    val sponsorWavesBalanceAfterFirstXferTest = sponsorWavesBalance - 2.waves - minFee - CommonValidation.FeeUnit * SmallFee / minSponsorFee
+    val minerWavesBalanceAfterFirstXferTest   = minerWavesBalance + 2.TN + minWavesFee + Sponsorship.FeeUnit * SmallFee / Token
+    val sponsorWavesBalanceAfterFirstXferTest = sponsorWavesBalance - 2.TN - minWavesFee - Sponsorship.FeeUnit * SmallFee / Token
 
     "fee should be written off in issued asset" - {
 
@@ -138,16 +133,8 @@ class SponsorshipSuite extends FreeSpec with NodesFromDocker with Matchers with 
       }
     }
 
-    "assets balance should contain sponsor fee info and sponsor balance" in {
-      val sponsorLeaseSomeWaves = sponsor.lease(sponsor.address, bob.address, leasingAmount, leasingFee).id
-      nodes.waitForHeightAriseAndTxPresent(sponsorLeaseSomeWaves)
-      val (_, sponsorEffectiveBalance) = sponsor.accountBalances(sponsor.address)
-      val assetsBalance                = alice.assetsBalance(alice.address).balances.filter(_.assetId == sponsorAssetId).head
-      assetsBalance.minSponsoredAssetFee shouldBe Some(minSponsorFee)
-      assetsBalance.sponsorBalance shouldBe Some(sponsorEffectiveBalance)
-    }
 
-    "TN fee depends on sponsor fee and sponsored token decimals" in {
+    "TN fee depends on sponsor fee and total sponsor tokens" in {
       val transferTxCustomFeeAlice = alice.transfer(alice.address, bob.address, 1.TN, LargeFee, None, Some(sponsorAssetId)).id
       nodes.waitForHeightAriseAndTxPresent(transferTxCustomFeeAlice)
       assert(!transferTxCustomFeeAlice.isEmpty)
@@ -163,47 +150,16 @@ class SponsorshipSuite extends FreeSpec with NodesFromDocker with Matchers with 
       miner.assertBalances(miner.address, minerWavesBalanceAfterFirstXferTest + CommonValidation.FeeUnit * LargeFee / Token + leasingFee)
     }
 
-    "cancel sponsorship" - {
-
-      "cancel" in {
-        val cancelSponsorshipTxId = sponsor.cancelSponsorship(sponsor.address, sponsorAssetId, fee = issueFee).id
-        nodes.waitForHeightAriseAndTxPresent(cancelSponsorshipTxId)
-        assert(!cancelSponsorshipTxId.isEmpty)
-      }
-
-      "check asset details info" in {
-        val assetInfo = alice.assetsBalance(alice.address).balances.filter(_.assetId == sponsorAssetId).head
-        assetInfo.minSponsoredAssetFee shouldBe None
-        assetInfo.sponsorBalance shouldBe None
-      }
-
-      "cannot pay fees in non sponsored assets" in {
-        assertBadRequestAndResponse(
-          alice.transfer(alice.address, bob.address, 10 * Token, fee = 1 * Token, assetId = None, feeAssetId = Some(sponsorAssetId)).id,
-          s"Asset $sponsorAssetId is not sponsored, cannot be used to pay fees"
-        )
-      }
-
-      "check cancel transaction info" in {
-        assertSponsorship(sponsorAssetId, 0L)
-      }
-
-      "check sponsor and miner balances after cancel" in {
-        miner.assertBalances(
-          sponsor.address,
-          sponsorWavesBalanceAfterFirstXferTest - CommonValidation.FeeUnit * LargeFee / Token - leasingFee - issueFee,
-          sponsorWavesBalanceAfterFirstXferTest - CommonValidation.FeeUnit * LargeFee / Token - leasingFee - leasingAmount - issueFee
-        )
-        miner.assertBalances(miner.address, minerWavesBalanceAfterFirstXferTest + CommonValidation.FeeUnit * LargeFee / Token + leasingFee + issueFee)
-      }
-
-      "cancel sponsopship again" in {
-        val cancelSponsorshipTxId = sponsor.cancelSponsorship(sponsor.address, sponsorAssetId, fee = issueFee).id
-        nodes.waitForHeightAriseAndTxPresent(cancelSponsorshipTxId)
-        assert(!cancelSponsorshipTxId.isEmpty)
-      }
-
-    }
+    "cancel sponsorship, cannot pay fees in non sponsored assets " in {
+      val cancelSponsorshipTxId = sponsor.cancelSponsorship(sponsor.address, sponsorAssetId, fee = 1.TN).id
+      nodes.waitForHeightAriseAndTxPresent(cancelSponsorshipTxId)
+      assert(!cancelSponsorshipTxId.isEmpty)
+      assertSponsorship(sponsorAssetId, 0L)
+      assertBadRequestAndResponse(
+        alice.transfer(alice.address, bob.address, 10 * Token, fee = 1 * Token, assetId = None, feeAssetId = Some(sponsorAssetId)).id,
+        s"Asset $sponsorAssetId is not sponsored, cannot be used to pay fees"
+      )
+git     }
     "set sponsopship again" - {
 
       "set sponsorship and check new asset details, min sponsored fee changed" in {
