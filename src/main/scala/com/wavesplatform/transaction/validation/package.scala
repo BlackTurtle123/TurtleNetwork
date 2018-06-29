@@ -43,7 +43,6 @@ package object validation {
       )
   }
 
-
   def validateName(name: Array[Byte]): Validated[Array[Byte]] = {
     Validated
       .condNel(
