@@ -40,7 +40,6 @@ class PoSSelector(blockchain: Blockchain, settings: BlockchainSettings) {
     getHit(height, accountPublicKey)
       .map(pc.calculateDelay(_, refBlockBT, balance)) //+ 2000
       .toRight(GenericError("No blocks in blockchain"))
-
   }
 
   def validateBlockDelay(height: Int, block: Block, parent: Block, effectiveBalance: Long): Either[ValidationError, Unit] = {
