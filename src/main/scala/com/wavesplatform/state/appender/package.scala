@@ -22,8 +22,8 @@ package object appender extends ScorexLogging {
 
   // Invalid blocks, that are already in blockchain
   private val exceptions = List(
-    8501 -> ByteStr.decodeBase58("XTF11mEcSAs5Mr2vXwnzZeW7pzmQo7xdQfi7GtWDQQUo8ZPPwTGNs9P2rHnNbGZUXJeheTSWNnqdixHQcrfSbt4").get,
-    8502 -> ByteStr.decodeBase58("3P24zcsKJCyJz65qjotmVWbArbPzgTWRDjH6LZHnxQXqjHSQi2V4DhviEnjxwkcgDo4Ehb2dRTbT6bSSVTZeSVsA").get,
+    8501   -> ByteStr.decodeBase58("XTF11mEcSAs5Mr2vXwnzZeW7pzmQo7xdQfi7GtWDQQUo8ZPPwTGNs9P2rHnNbGZUXJeheTSWNnqdixHQcrfSbt4").get,
+    8502   -> ByteStr.decodeBase58("3P24zcsKJCyJz65qjotmVWbArbPzgTWRDjH6LZHnxQXqjHSQi2V4DhviEnjxwkcgDo4Ehb2dRTbT6bSSVTZeSVsA").get,
   )
   private val oldChain = 128000
 
