@@ -6,9 +6,9 @@ import com.wavesplatform.metrics._
 import com.wavesplatform.mining.Miner
 import com.wavesplatform.network._
 import com.wavesplatform.settings.WavesSettings
-//import com.wavesplatform.state.{Blockchain, ByteStr, _}
 import com.wavesplatform.state.Blockchain
 import com.wavesplatform.utils.{ScorexLogging, Time}
+import com.wavesplatform.state.{Blockchain, ByteStr, _}
 import com.wavesplatform.utx.UtxPool
 import io.netty.channel.Channel
 import io.netty.channel.group.ChannelGroup
