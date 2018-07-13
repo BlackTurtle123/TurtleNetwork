@@ -9,6 +9,7 @@ import com.wavesplatform.settings.WavesSettings
 import com.wavesplatform.state.Blockchain
 import com.wavesplatform.utils.{ScorexLogging, Time}
 import com.wavesplatform.state.{Blockchain, ByteStr, _}
+import com.wavesplatform.state.Blockchain
 import com.wavesplatform.utx.UtxPool
 import io.netty.channel.Channel
 import io.netty.channel.group.ChannelGroup
