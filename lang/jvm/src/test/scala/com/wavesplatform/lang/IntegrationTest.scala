@@ -275,6 +275,15 @@ class IntegrationTest extends PropSpec with PropertyChecks with ScriptGen with M
     eval[EVALUATED](script, Some(pointCInstance)) shouldBe Left("arrgh")
   }
 
+  property("func") {
+    val script =
+      """
+        |func inc(z:Int) = {z + 1}
+        |inc(0)
+      """.stripMargin
+    eval[Long](script, Some(pointAInstance)) shouldBe Right(1)
+  }
+
   property("context won't change after inner let") {
     val script = "{ let x = 3; x } + { let x = 5; x}"
     eval[EVALUATED](script, Some(pointAInstance)) shouldBe evaluated(8)
@@ -317,7 +326,7 @@ class IntegrationTest extends PropSpec with PropertyChecks with ScriptGen with M
       function = PureContext.sumLong.header,
       args = List(
         BLOCK(
-          let = LET("x", CONST_LONG(5l)),
+          dec = LET("x", CONST_LONG(5l)),
           body = REF("x")
         ),
         REF("x")

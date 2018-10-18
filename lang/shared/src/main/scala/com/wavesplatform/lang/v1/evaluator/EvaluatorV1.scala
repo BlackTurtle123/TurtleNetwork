@@ -18,7 +18,7 @@ object EvaluatorV1 extends ExprEvaluator {
   override type Ver = V1.type
   override val version: Ver = V1
 
-  private def evalLetBlock(let: LET, inner: EXPR): EvalM[EVALUATED] =
+  private def evalLetBlock(let: LET, inner: EXPR): EvalM[Any] =
     for {
       ctx <- get[LoggedEvaluationContext, ExecutionError]
       blockEvaluation = evalExpr(let.value)
@@ -29,11 +29,23 @@ object EvaluatorV1 extends ExprEvaluator {
       }
     } yield result
 
-  private def evalRef(key: String): EvalM[EVALUATED] =
+  private def evalFuncBlock(func: FUNC, inner: EXPR): EvalM[Any] = {
+    val funcHeader = FunctionHeader.User(func.name)
+    val function   = UserFunction(func.name, null, s"user defined function '${func.name}'", func.args.map(n => (n, null, n)): _*)(func.body)
+    for {
+      ctx <- get[LoggedEvaluationContext, ExecutionError]
+      result <- id {
+        modify[LoggedEvaluationContext, ExecutionError](funcs.modify(_)(_.updated(funcHeader, function)))
+          .flatMap(_ => evalExpr(inner))
+      }
+    } yield result
+  }
+
+  private def evalRef(key: String) =
     get[LoggedEvaluationContext, ExecutionError] flatMap { ctx =>
       lets.get(ctx).get(key) match {
-        case Some(lzy) => liftTER[EVALUATED](lzy.value.value)
-        case None      => raiseError[LoggedEvaluationContext, ExecutionError, EVALUATED](s"A definition of '$key' not found")
+        case Some(lzy) => liftTER[Any](lzy.value.value)
+        case None      => raiseError[LoggedEvaluationContext, ExecutionError, Any](s"EV: A definition of '$key' not found")
       }
     }
 
@@ -91,8 +103,14 @@ object EvaluatorV1 extends ExprEvaluator {
         .getOrElse(raiseError[LoggedEvaluationContext, ExecutionError, EVALUATED](s"function '$header' not found"))
     } yield result
 
-  private def evalExpr(t: EXPR): EvalM[EVALUATED] = t match {
-    case BLOCK(let, inner)           => evalLetBlock(let, inner)
+  private def pureAny[A](v: A): EvalM[Any] = v.pure[EvalM].map(_.asInstanceOf[Any])
+
+  private def evalExpr(t: EXPR): EvalM[Any] = t match {
+    case BLOCK(dec, inner) =>
+      dec match {
+        case l: LET => evalLetBlock(l, inner)
+        case f:FUNC      => evalFuncBlock(f, inner)
+      }
     case REF(str)                    => evalRef(str)
     case c: EVALUATED                => implicitly[Monad[EvalM]].pure(c)
     case IF(cond, t1, t2)            => evalIF(cond, t1, t2)
