@@ -81,14 +81,8 @@ object WavesContext {
     val getStringFromArrayF: BaseFunction  = getDataFromArrayF("getString", DATA_STRING_FROM_ARRAY, DataType.String)
 
     def getDataByIndexF(name: String, dataType: DataType): BaseFunction =
-      UserFunction(
-        name,
-        UNION(dataType.innerType, UNIT),
-        "Extract data by index",
-        ("@data", LIST(dataEntryType.typeRef), "DataEntry vector, usally tx.data"),
-        ("@index", LONG, "index")
-      ) {
-        BLOCK(
+      UserFunction(name, UNION(dataType.innerType, UNIT), "Extract data by index", ("@data", LIST(dataEntryType.typeRef), "DataEntry vector, usally tx.data"), ("@index", LONG, "index")) {
+        BLOCKV1(
           LET("@val", GETTER(FUNCTION_CALL(PureContext.getElement, List(REF("@data"), REF("@index"))), "value")),
           IF(FUNCTION_CALL(PureContext._isInstanceOf, List(REF("@val"), CONST_STRING(dataType.innerType.name))), REF("@val"), REF("unit"))
         )
@@ -115,7 +109,7 @@ object WavesContext {
         FUNCTION_CALL(
           FunctionHeader.User("Address"),
           List(
-            BLOCK(
+            BLOCKV1(
               LET(
                 "@afpk_withoutChecksum",
                 FUNCTION_CALL(
@@ -182,10 +176,8 @@ object WavesContext {
 
     val addressFromStringF: BaseFunction =
       UserFunction("addressFromString", optionAddress, "Decode account address", ("@string", STRING, "string address represntation")) {
-
-        BLOCK(
-          LET("@afs_addrBytes",
-              FUNCTION_CALL(FunctionHeader.Native(FROMBASE58), List(removePrefixExpr(REF("@string"), EnvironmentFunctions.AddressPrefix)))),
+        BLOCKV1(
+          LET("@afs_addrBytes", FUNCTION_CALL(FunctionHeader.Native(FROMBASE58), List(removePrefixExpr(REF("@string"), EnvironmentFunctions.AddressPrefix)))),
           IF(
             FUNCTION_CALL(
               PureContext.eq,
