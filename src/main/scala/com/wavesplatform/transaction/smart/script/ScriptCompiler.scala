@@ -5,7 +5,7 @@ import com.wavesplatform.lang.ScriptVersion
 import com.wavesplatform.lang.ScriptVersion.Versions.V1
 import com.wavesplatform.lang.directives.{Directive, DirectiveKey, DirectiveParser}
 import com.wavesplatform.lang.v1.ScriptEstimator
-import com.wavesplatform.lang.v1.compiler.CompilerV1
+import com.wavesplatform.lang.v1.compiler.ExpressionCompilerV1
 import com.wavesplatform.lang.v1.compiler.Terms.EXPR
 import com.wavesplatform.utils._
 import com.wavesplatform.transaction.smart.script.v1.ScriptV1
@@ -30,8 +30,8 @@ object ScriptCompiler extends ScorexLogging {
     } yield (script, complexity)
   }
 
-  def tryCompile(src: String, version: ScriptVersion, isAssetScript: Boolean, directives: List[Directive]): Either[String, EXPR] = {
-    val compiler = new CompilerV1(compilerContext(version, isAssetScript))
+  def tryCompile(src: String, version: ScriptVersion, directives: List[Directive]): Either[String, EXPR] = {
+    val compiler = new ExpressionCompilerV1(compilerContext(version))
     try {
       compiler.compile(src, directives)
     } catch {
