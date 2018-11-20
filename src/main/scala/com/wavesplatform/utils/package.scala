@@ -6,12 +6,13 @@ import cats.kernel.Monoid
 import com.google.common.base.Throwables
 import com.wavesplatform.account.AddressScheme
 import com.wavesplatform.db.{Storage, VersionedStorage}
+import com.wavesplatform.lang.Global
+import com.wavesplatform.lang.Version._
 import com.wavesplatform.lang.v1.compiler.CompilerContext
 import com.wavesplatform.lang.v1.evaluator.ctx._
 import com.wavesplatform.lang.v1.evaluator.ctx.impl.waves.WavesContext
 import com.wavesplatform.lang.v1.evaluator.ctx.impl.{CryptoContext, PureContext}
 import com.wavesplatform.lang.v1.{CTX, FunctionHeader, ScriptEstimator}
-import com.wavesplatform.lang.{Global, ScriptVersion}
 import com.wavesplatform.state._
 import com.wavesplatform.transaction.smart.WavesEnvironment
 import monix.eval.Coeval
@@ -117,12 +118,12 @@ package object utils extends ScorexLogging {
       }
       .toMap
 
-  def dummyEvalContext(version: ScriptVersion): EvaluationContext = lazyContexts(version)().evaluationContext
+  def dummyEvalContext(version: Version): EvaluationContext = lazyContexts(version)().evaluationContext
 
-  private val lazyFunctionCosts: Map[ScriptVersion, Coeval[Map[FunctionHeader, Coeval[Long]]]] =
+  private val lazyFunctionCosts: Map[Version, Coeval[Map[FunctionHeader, Coeval[Long]]]] =
     lazyContexts.mapValues(_.map(ctx => estimate(ctx.evaluationContext)))
 
-  def functionCosts(version: ScriptVersion): Map[FunctionHeader, Coeval[Long]] = lazyFunctionCosts(version)()
+  def functionCosts(version: Version): Map[FunctionHeader, Coeval[Long]] = lazyFunctionCosts(version)()
 
   def estimate(ctx: EvaluationContext): Map[FunctionHeader, Coeval[Long]] = {
     val costs: mutable.Map[FunctionHeader, Coeval[Long]] = ctx.typeDefs.collect {
@@ -142,11 +143,9 @@ package object utils extends ScorexLogging {
     costs.toMap
   }
 
-  def compilerContext(version: ScriptVersion, isAssetScript: Boolean): CompilerContext =
-    if (isAssetScript) lazyAssetContexts(version)().compilerContext
-    else lazyContexts(version)().compilerContext
+  def compilerContext(version: Version): CompilerContext = lazyContexts(version)().compilerContext
 
-  def varNames(version: ScriptVersion): Set[String] = compilerContext(version, isAssetScript = false).varDefs.keySet
+  def varNames(version: Version): Set[String] = compilerContext(version).varDefs.keySet
 
   @tailrec
   final def untilTimeout[T](timeout: FiniteDuration, delay: FiniteDuration = 100.milliseconds, onFailure: => Unit = {})(fn: => T): T = {

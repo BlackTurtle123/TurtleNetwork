@@ -2,7 +2,7 @@ package com.wavesplatform.lang.v1.evaluator.ctx.impl.waves
 
 import cats.data.EitherT
 import cats.implicits._
-import com.wavesplatform.lang.ScriptVersion
+import com.wavesplatform.lang.Version._
 import com.wavesplatform.lang.v1.compiler.Terms._
 import com.wavesplatform.lang.v1.compiler.Types.{BYTEVECTOR, LONG, STRING, _}
 import com.wavesplatform.lang.v1.evaluator.FunctionIds._
@@ -20,7 +20,7 @@ object WavesContext {
   import Types._
   import com.wavesplatform.lang.v1.evaluator.ctx.impl.converters._
 
-  def build(version: ScriptVersion, env: Environment, isTokenContext: Boolean): CTX = {
+  def build(version: Version, env: Environment): CTX = {
     val environmentFunctions = new EnvironmentFunctions(env)
 
     val proofsEnabled = !isTokenContext
@@ -355,25 +355,7 @@ object WavesContext {
       wavesBalanceF
     )
 
-    val activeTxTypes   = buildActiveTransactionTypes(proofsEnabled)
-    val obsoleteTxTypes = buildObsoleteTransactionTypes(proofsEnabled)
 
-    val transactionsCommonType = UnionType("Transaction", activeTxTypes.map(_.typeRef))
-
-    val transactionTypes: List[CaseType] = obsoleteTxTypes ++ activeTxTypes
-
-    Seq(
-      addressType,
-      aliasType,
-      transfer,
-      assetPairType,
-      dataEntryType,
-      buildOrderType(proofsEnabled),
-      transactionsCommonType
-    ) ++ transactionTypes
-
-    val types = buildWavesTypes(proofsEnabled)
-
-    CTX(types, commonVars ++ vars(version.value), functions)
+    CTX(Types.wavesTypes, commonVars ++ vars(version), functions)
   }
 }
