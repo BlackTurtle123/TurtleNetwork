@@ -5,7 +5,7 @@ import com.wavesplatform.it.util._
 import com.wavesplatform.state.DataEntry
 import com.wavesplatform.transaction.assets.{IssueTransactionV1, IssueTransactionV2}
 import com.wavesplatform.transaction.smart.script.ScriptCompiler
-import com.wavesplatform.utils.Base58
+import com.wavesplatform.state._
 
 package object sync {
   val smartFee                   = 0.06.TN
