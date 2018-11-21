@@ -87,36 +87,18 @@ package object utils extends ScorexLogging {
     }
   }
 
-  private val lazyAssetContexts: Map[ScriptVersion, Coeval[CTX]] =
-    Seq
-      .tabulate(2) { v =>
-        val version = ScriptVersion.fromInt(v + 1).get
-        version -> Coeval.evalOnce(
-          Monoid
-            .combineAll(Seq(
-              PureContext.build(version),
-              CryptoContext.build(Global),
-              WavesContext
-                .build(version, new WavesEnvironment(AddressScheme.current.chainId, Coeval(???), Coeval(???), EmptyBlockchain), isTokenContext = true)
-            )))
-      }
-      .toMap
-
-  private val lazyContexts: Map[ScriptVersion, Coeval[CTX]] =
-    Seq
-      .tabulate(2) { v =>
-        val version = ScriptVersion.fromInt(v + 1).get
-        version -> Coeval.evalOnce(
-          Monoid
-            .combineAll(Seq(
-              PureContext.build(version),
-              CryptoContext.build(Global),
-              WavesContext.build(version,
-                                 new WavesEnvironment(AddressScheme.current.chainId, Coeval(???), Coeval(???), EmptyBlockchain),
-                                 isTokenContext = false)
-            )))
-      }
-      .toMap
+  private val lazyContexts: Map[Version, Coeval[CTX]] = Seq
+    .tabulate(3) { v =>
+      val version: Version = com.wavesplatform.lang.Version(v + 1)
+      version -> Coeval.evalOnce(
+        Monoid
+          .combineAll(Seq(
+            PureContext.build(version),
+            CryptoContext.build(Global),
+            WavesContext.build(version, new WavesEnvironment(AddressScheme.current.chainId, Coeval(???), Coeval(???), EmptyBlockchain))
+          )))
+    }
+    .toMap
 
   def dummyEvalContext(version: Version): EvaluationContext = lazyContexts(version)().evaluationContext
 
