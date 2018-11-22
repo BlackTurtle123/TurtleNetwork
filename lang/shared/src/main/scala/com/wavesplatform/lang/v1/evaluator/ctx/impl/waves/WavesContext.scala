@@ -359,7 +359,13 @@ object WavesContext {
       wavesBalanceF
     )
 
+<<<<<<< HEAD
 
     CTX(Types.wavesTypes, commonVars ++ vars(version), functions)
+=======
+    val writeSetType = CaseType("WriteSet", List("data" -> LIST(dataEntryType.typeRef)))
+
+    CTX(Types.wavesTypes ++ (if (version == V3) List(writeSetType) else List.empty), commonVars ++ vars(version), functions)
+>>>>>>> NODE-1299: writeSet introduced
   }
 }
