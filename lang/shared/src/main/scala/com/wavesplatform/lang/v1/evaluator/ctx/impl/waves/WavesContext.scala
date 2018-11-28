@@ -103,7 +103,7 @@ object WavesContext {
       )
     )
 
-    val addressFromPublicKeyF: BaseFunction =
+    lazy val addressFromPublicKeyF: BaseFunction =
       UserFunction("addressFromPublicKey", addressType.typeRef, "Convert public key to account address", ("@publicKey", BYTEVECTOR, "public key")) {
 
         FUNCTION_CALL(
@@ -174,7 +174,7 @@ object WavesContext {
       )
     )
 
-    val addressFromStringF: BaseFunction =
+    lazy val addressFromStringF: BaseFunction =
       UserFunction("addressFromString", optionAddress, "Decode account address", ("@string", STRING, "string address represntation")) {
         BLOCKV1(
           LET("@afs_addrBytes", FUNCTION_CALL(FunctionHeader.Native(FROMBASE58), List(removePrefixExpr(REF("@string"), EnvironmentFunctions.AddressPrefix)))),
@@ -337,7 +337,7 @@ object WavesContext {
       )
     )
 
-    val functions = Array(
+    lazy val functions = Array(
       txByIdF,
       txHeightByIdF,
       getIntegerFromStateF,
@@ -359,13 +359,8 @@ object WavesContext {
       wavesBalanceF
     )
 
-<<<<<<< HEAD
-
-    CTX(Types.wavesTypes, commonVars ++ vars(version), functions)
-=======
-    val writeSetType = CaseType("WriteSet", List("data" -> LIST(dataEntryType.typeRef)))
+    lazy val writeSetType = CaseType("WriteSet", List("data" -> LIST(dataEntryType.typeRef)))
 
     CTX(Types.wavesTypes ++ (if (version == V3) List(writeSetType) else List.empty), commonVars ++ vars(version), functions)
->>>>>>> NODE-1299: writeSet introduced
   }
 }
