@@ -33,13 +33,11 @@ class NoOrderProofsSuite extends BaseTransactionSuite {
             isAssetScript = true
           ).explicitGet()._1.bytes.value.base64)
       )
-<<<<<<< HEAD
-=======
+
     catch {
       case ex: java.lang.Exception => assert(ex.getMessage.contains("Compilation failed: Matching not exhaustive"))
       case _                       => throw new Exception("ScriptCompiler works incorrect for orders with smart assets")
     }
->>>>>>> NODE-1299: it test restored
 
       fail("ScriptCompiler didn't throw expected error")
     } catch {
