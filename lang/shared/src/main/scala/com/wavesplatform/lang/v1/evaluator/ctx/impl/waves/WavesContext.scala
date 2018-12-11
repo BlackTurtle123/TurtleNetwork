@@ -364,5 +364,7 @@ object WavesContext {
     CTX(Types.wavesTypes ++ (if (version == V3) List(writeSetType) else List.empty), commonVars ++ vars(version), functions)
   }
 
-  val transactionsCommonType = UnionType("Transaction", buildActiveTransactionTypes(true).map(_.typeRef))
+  val verifierInput =
+    UnionType("VerifierInput", (buildOrderType(true) :: buildActiveTransactionTypes(true)).map(_.typeRef))
+
 }
