@@ -359,9 +359,30 @@ object WavesContext {
       wavesBalanceF
     )
 
-    lazy val writeSetType = CaseType("WriteSet", List("data" -> LIST(dataEntryType.typeRef)))
+    val activeTxTypes   = buildActiveTransactionTypes(proofsEnabled)
+    val obsoleteTxTypes = buildObsoleteTransactionTypes(proofsEnabled)
 
-    CTX(Types.wavesTypes ++ (if (version == V3) List(writeSetType) else List.empty), commonVars ++ vars(version), functions)
+    val transactionsCommonType = UnionType("Transaction", activeTxTypes.map(_.typeRef))
+
+    val transactionTypes: List[CaseType] = obsoleteTxTypes ++ activeTxTypes
+
+    Seq(
+      addressType,
+      aliasType,
+      transfer,
+      assetPairType,
+      dataEntryType,
+      buildOrderType(proofsEnabled),
+      transactionsCommonType
+    ) ++ transactionTypes
+
+    lazy val writeSetType       = CaseType("WriteSet", List("data"       -> LIST(dataEntryType.typeRef)))
+    lazy val transferSetType     = CaseType("TransferSet", List("transfers" -> LIST(transfer.typeRef)))
+    lazy val contractResultType = CaseType("ContractResult", List("data" -> writeSetType.typeRef, "payments" -> transferSetType.typeRef))
+
+    val types = buildWavesTypes(proofsEnabled)
+
+    CTX(types ++ (if (version == V3) List(writeSetType, transferSetType, contractResultType) else List.empty), commonVars ++ vars(version), functions)
   }
 
   val verifierInput =
