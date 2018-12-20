@@ -134,10 +134,9 @@ class ContractInvocationTransactionSuite extends BaseTransactionSuite with Cance
     val tx =
       DataTransaction
         .selfSigned(
-          version = 1: Byte,
-          sender = caller,
-          data = List(StringDataEntry("a", "e")),
-          feeAmount = 1.waves,
+          version = 1: Byte, ender = contract,
+          data = List(StringDataEntry("a", "OOO")),
+          feeAmount = 1.TN,
           timestamp = System.currentTimeMillis()
         )
         .explicitGet()
