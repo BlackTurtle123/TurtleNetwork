@@ -147,10 +147,10 @@ object BlockDiffer extends ScorexLogging with Instrumented {
 
         val diffWithRevertedCoins =
           if (currentBlockHeight > 349000)
-            Monoid.combine(diffWithCancelledLeaseIns,CancelInvalidTx(composite(blockchain,diffWithCancelledLeaseIns)))
+            Monoid.combine(diffWithCancelledLeaseIns, CancelInvalidTx(composite(blockchain, diffWithCancelledLeaseIns)))
           else diffWithLeasePatches
 
-        (diffWithCancelledLeaseIns, constraint)
+        (diffWithRevertedCoins, constraint)
     }
   }
 }
