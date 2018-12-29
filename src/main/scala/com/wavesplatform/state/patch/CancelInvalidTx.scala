@@ -1,8 +1,7 @@
 package com.wavesplatform.state.patch
-
-import com.wavesplatform.state.{Blockchain, Diff, Portfolio, EitherExt2}
-import scorex.account.Address
-import scorex.utils.ScorexLogging
+import com.wavesplatform.account.Address
+import com.wavesplatform.state.{Blockchain, Diff, EitherExt2, LeaseBalance, Portfolio}
+import com.wavesplatform.utils.ScorexLogging
 
 object CancelAllLeases extends ScorexLogging {
 

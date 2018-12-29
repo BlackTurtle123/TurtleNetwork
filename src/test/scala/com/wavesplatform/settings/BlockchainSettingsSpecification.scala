@@ -128,7 +128,6 @@ class BlockchainSettingsSpecification extends FlatSpec with Matchers {
     settings.minBlocksInMemory should be(204)
     settings.addressSchemeCharacter should be('L')
     settings.functionalitySettings.allowTemporaryNegativeUntil should be(0L)
-    settings.functionalitySettings.requireSortedTransactionsAfter should be(0L)
     settings.functionalitySettings.generationBalanceDepthFrom50To1000AfterHeight should be(0L)
     settings.functionalitySettings.minimalGeneratingBalanceAfter should be(0L)
     settings.functionalitySettings.allowTransactionsFromFutureUntil should be(0L)

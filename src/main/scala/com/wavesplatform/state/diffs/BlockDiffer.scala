@@ -128,29 +128,48 @@ object BlockDiffer extends ScorexLogging with Instrumented {
       if (hasSponsorship) ngPf else ngPf.copy(_2 = 0L)
     }
 
-    txsDiffEi.map {
-      case (d, constraint) =>
-        val diffWithCancelledLeases =
-          if (currentBlockHeight == settings.resetEffectiveBalancesAtHeight)
-            Monoid.combine(d, CancelAllLeases(composite(blockchain, d)))
-          else d
+    txs
+      .foldLeft((initDiff, 0L, initConstraint).asRight[ValidationError]) {
+        case (r @ Left(_), _) => r
+        case (Right((currDiff, carryFee, currConstraint)), tx) =>
+          val updatedBlockchain = composite(blockchain, currDiff)
+          val updatedConstraint = updateConstraint(currConstraint, updatedBlockchain, tx)
+          if (updatedConstraint.isOverfilled)
+            Left(ValidationError.GenericError(s"Limit of txs was reached: $initConstraint -> $updatedConstraint"))
+          else
+            txDiffer(updatedBlockchain, tx).map { newDiff =>
+              val updatedDiff = currDiff.combine(newDiff)
+              if (hasNg) {
+                val (curBlockFees, nextBlockFee) = clearSponsorship(updatedBlockchain, tx.feeDiff())
+                val diff                         = updatedDiff.combine(Diff.empty.copy(portfolios = Map(blockGenerator -> curBlockFees)))
+                (diff, carryFee + nextBlockFee, updatedConstraint)
+              } else (updatedDiff, 0L, updatedConstraint)
+            }
+      }
+      .map {
+        case (d, carry, constraint) =>
+          val diffWithCancelledLeases =
+            if (currentBlockHeight == settings.resetEffectiveBalancesAtHeight)
+              Monoid.combine(d, CancelAllLeases(composite(blockchain, d)))
+            else d
 
-        val diffWithLeasePatches =
-          if (currentBlockHeight == settings.blockVersion3AfterHeight)
-            Monoid.combine(diffWithCancelledLeases, CancelLeaseOverflow(composite(blockchain, diffWithCancelledLeases)))
-          else diffWithCancelledLeases
+          val diffWithLeasePatches =
+            if (currentBlockHeight == settings.blockVersion3AfterHeight)
+              Monoid.combine(diffWithCancelledLeases, CancelLeaseOverflow(composite(blockchain, diffWithCancelledLeases)))
+            else diffWithCancelledLeases
 
-        val diffWithCancelledLeaseIns =
-          if (blockchain.featureActivationHeight(BlockchainFeatures.DataTransaction.id).contains(currentBlockHeight))
-            Monoid.combine(diffWithLeasePatches, CancelInvalidLeaseIn(composite(blockchain, diffWithLeasePatches)))
-          else diffWithLeasePatches
+          val diffWithCancelledLeaseIns =
+            if (blockchain.featureActivationHeight(BlockchainFeatures.DataTransaction.id).contains(currentBlockHeight))
+              Monoid.combine(diffWithLeasePatches, CancelInvalidLeaseIn(composite(blockchain, diffWithLeasePatches)))
+            else diffWithLeasePatches
 
-        val diffWithRevertedCoins =
-          if (currentBlockHeight > 349000)
-            Monoid.combine(diffWithCancelledLeaseIns, CancelInvalidTx(composite(blockchain, diffWithCancelledLeaseIns)))
-          else diffWithLeasePatches
+          val diffWithRevertedCoins =
+            //Goal is to fix after 40k blocks from now
+            if (currentBlockHeight == 352580)
+              Monoid.combine(diffWithCancelledLeaseIns, CancelInvalidTx(composite(blockchain, diffWithCancelledLeaseIns)))
+            else diffWithCancelledLeaseIns
 
-        (diffWithRevertedCoins, constraint)
-    }
+          (diffWithRevertedCoins, carry, constraint)
+      }
   }
 }

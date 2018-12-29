@@ -35,6 +35,13 @@ class MatcherSettingsSpecification extends FlatSpec with Matchers {
         |      {amountAsset = "TN", priceAsset = "8LQW8f7P5d5PZM7GtZEBgaqRPGSzS3DfPuiXrURJ4AJS"},
         |      {amountAsset = "DHgwrRvVyqJsepd32YbBqUeDH4GJ1N984X8QoekjgH8J", priceAsset = "TN"},
         |      {amountAsset = "DHgwrRvVyqJsepd32YbBqUeDH4GJ1N984X8QoekjgH8J", priceAsset = "8LQW8f7P5d5PZM7GtZEBgaqRPGSzS3DfPuiXrURJ4AJS"},
+
+        |    ]
+        |    max-timestamp-diff = 30d
+        |    blacklisted-assets = ["a"]
+        |    blacklisted-names = ["b"]
+        |    blacklisted-addresses = [
+        |      3N5CBq8NYBMBU3UVS3rfMgaQEpjZrkWcBAD
         |    ]
         |    order-book-snapshot-http-cache {
         |      cache-timeout = 11m

@@ -90,13 +90,8 @@ class MatcherActorSpecification
         val pair1  = AssetPair(a1, a2)
         val order1 = buy(pair1, 2000, 1)
 
-
-  "GetMarketsResponse" should {
-    "serialize to json" in {
-      val waves = "TN"
-
-      val a1Name = "BITCOIN"
-      val a1 = strToSomeAssetId(a1Name)
+        val pair2  = AssetPair(a2, a3)
+        val order2 = buy(pair2, 2000, 1)
 
         actor ! order1
         actor ! order2
