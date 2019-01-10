@@ -33,10 +33,6 @@ class AssetDistributionSuite extends BaseTransactionSuite with CancelAfterFailur
 
     nodes.waitForHeightArise()
 
-    val distributionHeight = node.height
-
-    nodes.waitForHeightArise()
-
     node.assetDistributionAtHeight(issueTx, initialHeight, 100).items shouldBe Map.empty
 
     val assetDis = node

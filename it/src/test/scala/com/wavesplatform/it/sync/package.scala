@@ -15,12 +15,12 @@ package object sync {
   val burnFee                    = 10.TN
   val sponsorFee                 = 10.TN
   val setAssetScriptFee          = 10.TN
-  val setScriptFee               = 0.04.waves
+  val setScriptFee               = 0.04.TN
   val transferAmount             = 10.TN
   val leasingAmount              = transferAmount
   val issueAmount                = transferAmount
   val massTransferFeePerTransfer = 0.005.TN
-  val someAssetAmount            = 9999999999999l
+  val someAssetAmount            = 9999999999999L
   val matcherFee                 = 0.04.TN
   val orderFee                   = matcherFee
   val smartMatcherFee            = 0.06.TN
@@ -37,10 +37,10 @@ package object sync {
     minFee + massTransferFeePerTransfer * (numberOfRecipients + 1)
   }
 
-  val supportedVersions = List(null, "2") //sign and broadcast use default for V1
+  val supportedVersions: List[Byte] = List(1, 2)
 
-  val script       = ScriptCompiler(s"""true""".stripMargin, isAssetScript = false).explicitGet()._1
-  val scriptBase64 = script.bytes.value.base64
+  val script: Script       = ScriptCompiler(s"""true""".stripMargin, isAssetScript = false).explicitGet()._1
+  val scriptBase64: String = script.bytes.value.base64
 
   val errNotAllowedByToken = "Transaction is not allowed by token-script"
 
