@@ -115,7 +115,7 @@ object WavesContext {
                 FUNCTION_CALL(
                   PureContext.sumByteVector,
                   List(
-                    CONST_BYTEVECTOR(ByteVector(EnvironmentFunctions.AddressVersion, env.networkByte)),
+                    CONST_BYTEVECTOR(ByteVector(EnvironmentFunctions.AddressVersion, env.chainId)),
                     // publicKeyHash
                     FUNCTION_CALL(
                       PureContext.takeBytes,
@@ -207,7 +207,7 @@ object WavesContext {
                         CONST_LONG(1)
                       )
                     ),
-                    CONST_BYTEVECTOR(ByteVector(env.networkByte))
+                    CONST_BYTEVECTOR(ByteVector(env.chainId))
                   )
                 ),
                 IF(
