@@ -35,6 +35,8 @@ class BlockchainSettingsSpecification extends FlatSpec with Matchers {
         |          6 = 0
         |        }
         |        double-features-periods-after-height = 21
+        |        max-transaction-time-back-offset = 55s
+        |        max-transaction-time-forward-offset = 12d
         |      }
         |      genesis {
         |        timestamp: 1517503972000
@@ -66,8 +68,10 @@ class BlockchainSettingsSpecification extends FlatSpec with Matchers {
     settings.functionalitySettings.blockVersion3AfterHeight should be(18)
     settings.functionalitySettings.preActivatedFeatures should be(Map(5 -> 0, 1 -> 0, 6 -> 0, 2 -> 0, 3 -> 0))
     settings.functionalitySettings.doubleFeaturesPeriodsAfterHeight should be(21)
-    settings.genesisSettings.blockTimestamp should be(1517503972000L)
-    settings.genesisSettings.timestamp should be(1517503972000L)
+    settings.functionalitySettings.maxTransactionTimeBackOffset should be(55.seconds)
+    settings.functionalitySettings.maxTransactionTimeForwardOffset should be(12.days)
+    settings.genesisSettings.blockTimestamp should be(1460678400000L)
+    settings.genesisSettings.timestamp should be(1460678400000L)
     settings.genesisSettings.signature should be(ByteStr.decodeBase58("BASE58BLKSGNATURE").toOption)
     settings.genesisSettings.initialBalance should be(50000000000000000L)
     settings.genesisSettings.initialBaseTarget should be(153722867)
@@ -95,6 +99,8 @@ class BlockchainSettingsSpecification extends FlatSpec with Matchers {
     settings.functionalitySettings.allowMultipleLeaseCancelTransactionUntilTimestamp should be(1492560000000L)
     settings.functionalitySettings.resetEffectiveBalancesAtHeight should be(51500)
     settings.functionalitySettings.blockVersion3AfterHeight should be(161700)
+    settings.functionalitySettings.maxTransactionTimeBackOffset should be(120.minutes)
+    settings.functionalitySettings.maxTransactionTimeForwardOffset should be(90.minutes)
     settings.genesisSettings.blockTimestamp should be(1460678400000L)
     settings.genesisSettings.timestamp should be(1478000000000L)
     settings.genesisSettings.signature should be(
@@ -120,18 +126,19 @@ class BlockchainSettingsSpecification extends FlatSpec with Matchers {
         |  }
         |}""".stripMargin))
     val settings = BlockchainSettings.fromConfig(config)
-
-    settings.addressSchemeCharacter should be('L')
-    settings.functionalitySettings.allowTemporaryNegativeUntil should be(0L)
-    settings.functionalitySettings.generationBalanceDepthFrom50To1000AfterHeight should be(0L)
-    settings.functionalitySettings.minimalGeneratingBalanceAfter should be(0L)
-    settings.functionalitySettings.allowTransactionsFromFutureUntil should be(0L)
-    settings.functionalitySettings.allowUnissuedAssetsUntil should be(0L)
-    settings.functionalitySettings.allowInvalidReissueInSameBlockUntilTimestamp should be(0L)
-    settings.functionalitySettings.allowMultipleLeaseCancelTransactionUntilTimestamp should be(0L)
-    settings.functionalitySettings.resetEffectiveBalancesAtHeight should be(1)
-    settings.genesisSettings.blockTimestamp should be(1500635421931L)
-    settings.genesisSettings.timestamp should be(1500635421931L)
+    settings.addressSchemeCharacter should be('W')
+    settings.functionalitySettings.allowTemporaryNegativeUntil should be(1479168000000L)
+    settings.functionalitySettings.generationBalanceDepthFrom50To1000AfterHeight should be(232000L)
+    settings.functionalitySettings.minimalGeneratingBalanceAfter should be(1479168000000L)
+    settings.functionalitySettings.allowTransactionsFromFutureUntil should be(1479168000000L)
+    settings.functionalitySettings.allowUnissuedAssetsUntil should be(1479416400000L)
+    settings.functionalitySettings.allowInvalidReissueInSameBlockUntilTimestamp should be(1492768800000L)
+    settings.functionalitySettings.allowMultipleLeaseCancelTransactionUntilTimestamp should be(1492768800000L)
+    settings.functionalitySettings.resetEffectiveBalancesAtHeight should be(462000)
+    settings.functionalitySettings.maxTransactionTimeBackOffset should be(120.minutes)
+    settings.functionalitySettings.maxTransactionTimeForwardOffset should be(90.minutes)
+    settings.genesisSettings.blockTimestamp should be(1460678400000L)
+    settings.genesisSettings.timestamp should be(1465742577614L)
     settings.genesisSettings.signature should be(
       ByteStr.decodeBase58("4UpaXRasizJcaYjV8PndCFAXMftC3yZVvGiTft9c5HiXX5jj5eJ1Xo95Lerg6X8diKzi1dywvyfZYJipif1oYgZD").toOption)
     settings.genesisSettings.initialBalance should be(10000000000000000L)

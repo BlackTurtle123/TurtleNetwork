@@ -20,7 +20,9 @@ case class FunctionalitySettings(featureCheckBlocksPeriod: Int,
                                  resetEffectiveBalancesAtHeight: Int,
                                  blockVersion3AfterHeight: Int,
                                  preActivatedFeatures: Map[Short, Int],
-                                 doubleFeaturesPeriodsAfterHeight: Int) {
+                                 doubleFeaturesPeriodsAfterHeight: Int,
+                                 maxTransactionTimeBackOffset: FiniteDuration,
+                                 maxTransactionTimeForwardOffset: FiniteDuration) {
   val allowLeasedBalanceTransferUntilHeight: Int = blockVersion3AfterHeight
 
   require(featureCheckBlocksPeriod > 0, "featureCheckBlocksPeriod must be greater than 0")
@@ -60,7 +62,9 @@ object FunctionalitySettings {
     resetEffectiveBalancesAtHeight = 1,
     blockVersion3AfterHeight = 0,
     preActivatedFeatures = Map.empty,
-    doubleFeaturesPeriodsAfterHeight = 0
+    doubleFeaturesPeriodsAfterHeight = 810000,
+    maxTransactionTimeBackOffset = 120.minutes,
+    maxTransactionTimeForwardOffset = 90.minutes
   )
 
   val TESTNET = apply(
@@ -76,7 +80,9 @@ object FunctionalitySettings {
     resetEffectiveBalancesAtHeight = 51500,
     blockVersion3AfterHeight = 161700,
     preActivatedFeatures = Map.empty,
-    doubleFeaturesPeriodsAfterHeight = Int.MaxValue
+    doubleFeaturesPeriodsAfterHeight = Int.MaxValue,
+    maxTransactionTimeBackOffset = 120.minutes,
+    maxTransactionTimeForwardOffset = 90.minutes
   )
 
   val configPath = "TN.blockchain.custom.functionality"
