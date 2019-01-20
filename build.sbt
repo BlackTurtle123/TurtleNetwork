@@ -38,7 +38,7 @@ val versionSource = Def.task {
 val network = SettingKey[Network]("network")
 network := { Network(sys.props.get("network")) }
 name := "TN"
-normalizedName := network.value.name
+normalizedName := s"${name.value}${network.value.packageSuffix}"
 
 git.useGitDescribe := true
 git.uncommittedSignifier := Some("DIRTY")
@@ -122,14 +122,29 @@ inConfig(Test)(
 
 inConfig(Linux)(
   Seq(
-    maintainer := "wavesplatform.com",
+    maintainer := "blackturtle.eu",
     packageSummary := "TN node",
     packageDescription := "TN node"
   ))
 
+bashScriptExtraDefines += s"""addJava "-DTN.directory=/var/lib/${normalizedName.value}""""
+
+val linuxScriptPattern = "bin/(.+)".r
+val batScriptPattern   = "bin/([^.]+)\\.bat".r
+
 inConfig(Universal)(
   Seq(
-    mappings += (baseDirectory.value / s"TN-${network.value}.conf" -> "doc/waves.conf.sample"),
+    mappings += (baseDirectory.value / s"TN-${network.value}.conf" -> "doc/TN.conf.sample"),
+    mappings := {
+      val scriptSuffix = network.value.packageSuffix
+      mappings.value.map {
+        case m @ (file, batScriptPattern(script)) =>
+          if (script.endsWith(scriptSuffix)) m else (file, s"bin/$script$scriptSuffix.bat")
+        case m @ (file, linuxScriptPattern(script)) =>
+          if (script.endsWith(scriptSuffix)) m else (file, s"bin/$script$scriptSuffix")
+        case other => other
+      }
+    },
     javaOptions ++= Seq(
       // -J prefix is required by the bash script
       "-J-server",
@@ -223,7 +238,6 @@ lazy val lang =
       scalaModuleInfo ~= (_.map(_.withOverrideScalaVersion(true))),
       test in assembly := {},
       addCompilerPlugin(Dependencies.kindProjector),
-      addCompilerPlugin(Dependencies.betterFor),
       libraryDependencies ++=
         Dependencies.cats ++
           Dependencies.fp ++
@@ -240,8 +254,7 @@ lazy val lang =
     .jsSettings(
       scalaJSLinkerConfig ~= {
         _.withModuleKind(ModuleKind.CommonJSModule)
-      },
-      libraryDependencies += "org.rudogma" %%% "supertagged" % "1.4",
+      }
     )
     .jvmSettings(
       coverageExcludedPackages := "",

@@ -3,7 +3,7 @@ import com.wavesplatform.account.Address
 import com.wavesplatform.state.{Blockchain, Diff, EitherExt2, LeaseBalance, Portfolio}
 import com.wavesplatform.utils.ScorexLogging
 
-object CancelAllLeases extends ScorexLogging {
+object CancelInvalidTx extends ScorexLogging {
 
   def apply(s: Blockchain): Diff = {
     val addr1 = Address.fromString("3JcQHUDAzkprtFHX8DskQCys3upBYhPeJQq").explicitGet()

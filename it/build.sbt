@@ -14,31 +14,19 @@ concurrentRestrictions in Global := {
 }
 enablePlugins(sbtdocker.DockerPlugin)
 
-val aspectjRedistDir = Def.setting(baseDirectory.value / ".." / "third-party" / "aspectj")
-val yourKitRedistDir = Def.setting(baseDirectory.value / ".." / "third-party" / "yourkit")
-
 inTask(docker)(
   Seq(
     dockerfile := {
       val configTemplate = (Compile / resourceDirectory).value / "template.conf"
       val startWaves     = sourceDirectory.value / "container" / "start-TN.sh"
 
-inTask(docker)(Seq(
-  dockerfile := {
-    val configTemplate = (Compile / resourceDirectory).value / "template.conf"
-    val startWaves = sourceDirectory.value / "container" / "start-TN.sh"
-    val profilerAgent = yourKitRedistDir.value / "libyjpagent.so"
+      val withAspectJ     = Option(System.getenv("WITH_ASPECTJ")).fold(false)(_.toBoolean)
+      val aspectjAgentUrl = "http://search.maven.org/remotecontent?filepath=org/aspectj/aspectjweaver/1.9.1/aspectjweaver-1.9.1.jar"
+      val yourKitArchive  = "YourKit-JavaProfiler-2018.04-docker.zip"
 
-    new Dockerfile {
-      from("anapsix/alpine-java:8_server-jre")
-      add((assembly in LocalProject("node")).value, "/opt/TN/TN.jar")
-      add(Seq(configTemplate, startWaves, profilerAgent), "/opt/TN/")
-      add(profilerAgent, "/opt/TN/")
-      run("chmod", "+x", "/opt/TN/start-TN.sh")
-      entryPoint("/opt/TN/start-TN.sh")
-      expose(10001)
-    }
-  },
+      new Dockerfile {
+        from("anapsix/alpine-java:8_server-jre")
+        runRaw("mkdir -p /opt/TN")
 
         // Install YourKit
         runRaw(s"""apk update && \\
@@ -98,9 +86,7 @@ lazy val itTestsCommonSettings: Seq[Def.Setting[_]] = Seq(
               "-XX:+IgnoreUnrecognizedVMOptions",
               "--add-modules=java.xml.bind",
               "-DTN.it.logging.appender=FILE",
-              s"-DTN.it.logging.dir=${logDirectoryValue / suite.name.replaceAll("""(\w)\w*\.""", "$1.")}",
-              s"-DTN.profiling.yourKitDir=$yourKitRedistDirValue"
-
+              s"-DTN.it.logging.dir=${logDirectoryValue / suite.name.replaceAll("""(\w)\w*\.""", "$1.")}"
             ) ++ javaOptionsValue,
             connectInput = false,
             envVars = envVarsValue
