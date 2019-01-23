@@ -10,7 +10,6 @@ import com.wavesplatform.transaction.transfer._
 import com.wavesplatform.utils.ScorexLogging
 import org.scalatest._
 import org.scalatest.concurrent.{IntegrationPatience, ScalaFutures}
-import play.api.libs.json.JsNumber
 
 trait IntegrationSuiteWithThreeAddresses
     extends BeforeAndAfterAll

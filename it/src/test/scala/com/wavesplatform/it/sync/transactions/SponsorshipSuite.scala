@@ -84,8 +84,18 @@ class SponsorshipSuite extends FreeSpec with NodesFromDocker with Matchers with 
       assetInfo.sponsorBalance shouldBe Some(sponsor.accountBalances(sponsor.address)._2)
     }
 
-    "not enought balance for fee" in {
-      assertBadRequestAndResponse(bob.transfer(bob.address, alice.address, 1.TN, SmallFee, None, Some(sponsorAssetId)), "unavailable funds")
+    "sender cannot make transfer" - {
+      "invalid tx timestamp" in {
+
+        def invalidTx(timestamp: Long): SponsorFeeTransaction.TransactionT =
+          SponsorFeeTransaction
+            .selfSigned(1, sponsor.privateKey, ByteStr.decodeBase58(sponsorAssetId).get, Some(SmallFee), minFee, timestamp + 1.day.toMillis)
+            .right
+            .get
+
+        val iTx = invalidTx(timestamp = System.currentTimeMillis + 1.day.toMillis)
+        assertBadRequestAndResponse(sponsor.broadcastRequest(iTx.json()), "Transaction timestamp .* is more than .*ms in the future")
+      }
     }
 
     val minerWavesBalanceAfterFirstXferTest   = minerWavesBalance + 2.TN + minWavesFee + Sponsorship.FeeUnit * SmallFee / Token

@@ -30,6 +30,9 @@ class AssetDistributionSuite extends BaseTransactionSuite with CancelAfterFailur
       Some(issueTx),
       waitForTx = true
     )
+    nodes.waitForHeightArise()
+
+    val distributionHeight = node.height
 
     nodes.waitForHeightArise()
 
@@ -104,6 +107,31 @@ class AssetDistributionSuite extends BaseTransactionSuite with CancelAfterFailur
 
     nodes.waitForHeightArise()
 
+<<<<<<< HEAD
+    val distribution = node.assetDistribution(issueTx)
+
+    distribution.size shouldBe (receivers.size + 1)
+    distribution(issuer) shouldBe (issueAmount - 10 * receivers.length)
+
+    assert(receivers.forall(rc => distribution(rc) == 10), "Distribution correct")
+  }
+
+  test("Correct entry count") {
+    val receivers = for (i <- 0 until 50) yield PrivateKeyAccount(s"receiver#$i".getBytes)
+
+    val issueTx = node.issue(issuer.address, "TestCoin#2", "no description", issueAmount, 8, false, issueFee, waitForTx = true).id
+
+    node
+      .massTransfer(
+        issuer.address,
+        receivers.map(rc => MassTransferTransaction.Transfer(rc.address, 10)).toList,
+        minFee + minFee * receivers.length,
+        Some(issueTx),
+        waitForTx = true
+      )
+
+    nodes.waitForHeightArise()
+
     val height = node.height
 
     nodes.waitForHeightArise()
@@ -114,6 +142,18 @@ class AssetDistributionSuite extends BaseTransactionSuite with CancelAfterFailur
     assert(pages.map(_.items.size).sum == 51)
   }
 
+=======
+    val height = node.height
+
+    nodes.waitForHeightArise()
+
+    val pages = distributionPages(issueTx, height, 10)
+
+    assert(pages.length == 6)
+    assert(pages.map(_.items.size).sum == 51)
+  }
+
+>>>>>>> 4d578a79fec9977111ae45b281cecf1adbeb4599
   def distributionPages(asset: String, height: Int, limit: Int): List[AssetDistributionPage] = {
     def _load(acc: List[AssetDistributionPage], maybeAfter: Option[String]): List[AssetDistributionPage] = {
       val page = node.assetDistributionAtHeight(asset, height, limit, maybeAfter)

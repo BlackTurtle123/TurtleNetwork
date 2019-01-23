@@ -29,7 +29,6 @@ case class NodeApiRoute(settings: RestAPISettings, blockchain: Blockchain, appli
     Array(
       new ApiResponse(code = 200, message = "Json TN node version")
     ))
-
   def version: Route = (get & path("version")) {
     complete(Json.obj("version" -> Constants.AgentName))
   }

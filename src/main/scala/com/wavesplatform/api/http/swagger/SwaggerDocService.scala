@@ -12,7 +12,8 @@ class SwaggerDocService(val actorSystem: ActorSystem, val materializer: ActorMat
     extends SwaggerHttpService {
 
   override val host: String = settings.bindAddress + ":" + settings.port
-  override val info: Info = Info("The Web Interface to the TN Full Node API",
+  override val info: Info = Info(
+    "The Web Interface to the TN Full Node API",
     Version.VersionString,
     "TN Full Node",
     "License: Apache License, Version 2.0",

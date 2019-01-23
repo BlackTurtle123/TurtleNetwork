@@ -122,22 +122,8 @@ object ContractResult {
           case FieldNames.ContractResult => processContractSet(c)
           case _                => ???
         }
-        Right(ContractResult(r.toList, List.empty))
-      case CaseObj(tpe, fields) if tpe.name == "TransferSet" =>
-        val xs: IndexedSeq[EVALUATED] = fields("transfers").asInstanceOf[ARR].xs
-        val r = xs.map {
-          case CaseObj(tpe, fields) if tpe.name == "Transfer" =>
-            (fields("recipient"), fields("amount")) match {
-              case (CaseObj(Types.addressType.typeRef, fields2), CONST_LONG(b)) =>
-                fields2("bytes") match {
-                  case CONST_BYTEVECTOR(addBytes) => (Address(addBytes), b)
-                  case v                          => ???
-                }
-              case v => ???
-            }
-          case v => ???
-        }
-        Right(ContractResult(List.empty, r.toList))
+
+      case _ => ???
     }
   }
 }

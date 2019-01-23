@@ -58,8 +58,8 @@ class EvaluatorV1Test extends PropSpec with PropertyChecks with Matchers with Sc
   }
 
   property("return error and log of failed evaluation") {
-    val (log, Left(err)) = EvaluatorV1.applywithLogging[Boolean](
-      PureContext.evalContext,
+    val (log, Left(err)) = EvaluatorV1.applywithLogging[EVALUATED](
+      pureEvalContext,
       expr = BLOCKV2(
         LET("x", CONST_LONG(3)),
         BLOCKV2(
@@ -76,7 +76,7 @@ class EvaluatorV1Test extends PropSpec with PropertyChecks with Matchers with Sc
   }
 
   property("successful on unused let") {
-    ev[Long](
+    ev[EVALUATED](
       expr = BLOCKV2(
         LET("x", CONST_LONG(3)),
         CONST_LONG(3)
@@ -84,12 +84,12 @@ class EvaluatorV1Test extends PropSpec with PropertyChecks with Matchers with Sc
   }
 
   property("successful on x = y") {
-    ev[Long](
+    ev[EVALUATED](
       expr = BLOCKV2(LET("x", CONST_LONG(3)),
                      BLOCKV2(
                        LET("y", REF("x")),
                        FUNCTION_CALL(sumLong.header, List(REF("x"), REF("y")))
-                     ))) shouldBe Right(6)
+                     ))) shouldBe evaluated(6)
   }
 
   property("successful on simple get") {
@@ -97,8 +97,7 @@ class EvaluatorV1Test extends PropSpec with PropertyChecks with Matchers with Sc
   }
 
   property("successful on get used further in expr") {
-
-    ev[Boolean](
+    ev[EVALUATED](
       expr = BLOCKV2(
         LET("x", CONST_LONG(3)),
         FUNCTION_CALL(PureContext.eq.header, List(REF("x"), CONST_LONG(2)))
@@ -106,16 +105,15 @@ class EvaluatorV1Test extends PropSpec with PropertyChecks with Matchers with Sc
   }
 
   property("successful on multiple lets") {
-
-    ev[Boolean](
+    ev[EVALUATED](
       expr = BLOCKV2(
         LET("x", CONST_LONG(3)),
         BLOCKV2(LET("y", CONST_LONG(3)), FUNCTION_CALL(PureContext.eq.header, List(REF("x"), REF("y"))))
-      )) shouldBe Right(true)
+      )) shouldBe evaluated(true)
   }
 
   property("successful on multiple lets with expression") {
-    ev[Boolean](
+    ev[EVALUATED](
       expr = BLOCKV2(
         LET("x", CONST_LONG(3)),
         BLOCKV2(
@@ -177,9 +175,8 @@ class EvaluatorV1Test extends PropSpec with PropertyChecks with Matchers with Sc
     )
     ev[EVALUATED](
       context = context,
-
       expr = BLOCKV2(LET("Z", REF("badVal")), FUNCTION_CALL(sumLong.header, List(GETTER(REF("p"), "X"), CONST_LONG(2))))
-    ) shouldBe Right(5)
+    ) shouldBe evaluated(5)
   }
 
   property("let is evaluated maximum once") {
@@ -199,7 +196,7 @@ class EvaluatorV1Test extends PropSpec with PropertyChecks with Matchers with Sc
     ev[EVALUATED](
       context = context,
       expr = BLOCKV2(LET("X", FUNCTION_CALL(f.header, List(CONST_LONG(1000)))), FUNCTION_CALL(sumLong.header, List(REF("X"), REF("X"))))
-    ) shouldBe Right(2L)
+    ) shouldBe evaluated(2L)
 
     functionEvaluated shouldBe 1
   }

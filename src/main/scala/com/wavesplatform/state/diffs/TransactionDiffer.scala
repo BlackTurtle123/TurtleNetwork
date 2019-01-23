@@ -47,28 +47,7 @@ object TransactionDiffer extends Instrumented with ScorexLogging {
             _ <- CommonValidation.checkFee(blockchain, settings, currentBlockHeight, tx)
           } yield ()
         }
-      diff <- stats.transactionDiffValidation.measureForType(tx.builder.typeId) {
-        tx match {
-          case gtx: GenesisTransaction      => GenesisTransactionDiff(currentBlockHeight)(gtx)
-          case ptx: PaymentTransaction      => PaymentTransactionDiff(blockchain, currentBlockHeight, settings, currentBlockTimestamp)(ptx)
-          case itx: IssueTransaction        => AssetTransactionsDiff.issue(currentBlockHeight)(itx)
-          case rtx: ReissueTransaction      => AssetTransactionsDiff.reissue(blockchain, settings, currentBlockTimestamp, currentBlockHeight)(rtx)
-          case btx: BurnTransaction         => AssetTransactionsDiff.burn(blockchain, currentBlockHeight)(btx)
-          case ttx: TransferTransaction     => TransferTransactionDiff(blockchain, settings, currentBlockTimestamp, currentBlockHeight)(ttx)
-          case mtx: MassTransferTransaction => MassTransferTransactionDiff(blockchain, currentBlockTimestamp, currentBlockHeight)(mtx)
-          case ltx: LeaseTransaction        => LeaseTransactionsDiff.lease(blockchain, currentBlockHeight)(ltx)
-          case ltx: LeaseCancelTransaction  => LeaseTransactionsDiff.leaseCancel(blockchain, settings, currentBlockTimestamp, currentBlockHeight)(ltx)
-          case etx: ExchangeTransaction     => ExchangeTransactionDiff(blockchain, currentBlockHeight)(etx)
-          case atx: CreateAliasTransaction  => CreateAliasTransactionDiff(blockchain, currentBlockHeight)(atx)
-          case dtx: DataTransaction         => DataTransactionDiff(blockchain, currentBlockHeight)(dtx)
-          case sstx: SetScriptTransaction   => SetScriptTransactionDiff(blockchain, currentBlockHeight)(sstx)
-          case sstx: SetAssetScriptTransaction =>
-            AssetTransactionsDiff.setAssetScript(blockchain, settings, currentBlockTimestamp, currentBlockHeight)(sstx)
-          case stx: SponsorFeeTransaction        => AssetTransactionsDiff.sponsor(blockchain, settings, currentBlockTimestamp, currentBlockHeight)(stx)
-          case ci: ContractInvocationTransaction => ContractInvocationTransactionDiff.apply(blockchain, currentBlockHeight)(ci)
-          case _                                 => Left(UnsupportedTransactionType)
-        }
-      }
+      diff <- unverified(settings, currentBlockTimestamp, currentBlockHeight)(blockchain, tx)
       positiveDiff <- stats.balanceValidation
         .measureForType(tx.builder.typeId) {
           BalanceDiffValidation(blockchain, currentBlockHeight, settings)(diff)

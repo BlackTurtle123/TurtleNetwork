@@ -13,7 +13,7 @@ class DenyDuplicateVarNamesTest extends PropSpec with PropertyChecks with Matche
 
   property("allow $ duplicates")(test(BLOCKV1(LET("$x", TRUE), BLOCKV1(LET("$x", TRUE), TRUE))) shouldBe 'right)
 
-  property("deny overwrite height")(DenyDuplicateVarNames(Set("height"), BLOCKV1(LET("height", TRUE), TRUE)) should produce("height"))
+  property("deny overwrite height")(DenyDuplicateVarNames(V1, Set("height"), BLOCKV1(LET("height", TRUE), TRUE)) should produce("height"))
 
   property("deny duplicates in block")(test(BLOCKV1(LET("x", TRUE), BLOCKV1(LET("x", TRUE), TRUE))) should produce("x"))
 

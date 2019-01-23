@@ -32,23 +32,26 @@ trait MatcherTestData extends NTPTime { _: Suite =>
 
   val assetPairGen = Gen.frequency((18, distinctPairGen), (1, assetIdGen(1).map(AssetPair(_, None))), (1, assetIdGen(2).map(AssetPair(None, _))))
 
+  val maxTimeGen: Gen[Long]     = Gen.choose(10000L, Order.MaxLiveTime).map(_ + System.currentTimeMillis())
+  val createdTimeGen: Gen[Long] = Gen.choose(0L, 10000L).map(System.currentTimeMillis() - _)
+
   val config = loadConfig(ConfigFactory.parseString("""TN {
-      |  directory: "/tmp/TN-test"
-      |  matcher {
-      |    enable: yes
-      |    account: ""
-      |    bind-address: "127.0.0.1"
-      |    port: 6886
-      |    order-history-file: null
-      |    min-order-fee: 100000
-      |    order-match-tx-fee: 100000
-      |    snapshots-interval: 1d
-      |    max-open-orders: 1000
-      |    price-assets: ["BASE1", "BASE2", "BASE"]
-      |    blacklisted-assets: ["BLACKLST"]
-      |    blacklisted-names: ["[Ff]orbidden"]
-      |  }
-      |}""".stripMargin))
+                                                      |  directory: "/tmp/TN-test"
+                                                      |  matcher {
+                                                      |    enable: yes
+                                                      |    account: ""
+                                                      |    bind-address: "127.0.0.1"
+                                                      |    port: 6886
+                                                      |    order-history-file: null
+                                                      |    min-order-fee: 100000
+                                                      |    order-match-tx-fee: 100000
+                                                      |    snapshots-interval: 1d
+                                                      |    max-open-orders: 1000
+                                                      |    price-assets: ["BASE1", "BASE2", "BASE"]
+                                                      |    blacklisted-assets: ["BLACKLST"]
+                                                      |    blacklisted-names: ["[Ff]orbidden"]
+                                                      |  }
+                                                      |}""".stripMargin))
 
   val matcherSettings = MatcherSettings.fromConfig(config)
 

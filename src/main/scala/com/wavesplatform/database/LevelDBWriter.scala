@@ -1,6 +1,5 @@
 package com.wavesplatform.database
 
-import cats.kernel.Monoid
 import com.google.common.cache.CacheBuilder
 import com.wavesplatform.account.{Address, Alias}
 import com.wavesplatform.block.{Block, BlockHeader}

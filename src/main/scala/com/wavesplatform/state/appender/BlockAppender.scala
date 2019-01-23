@@ -8,8 +8,6 @@ import com.wavesplatform.network._
 import com.wavesplatform.settings.WavesSettings
 import com.wavesplatform.state.Blockchain
 import com.wavesplatform.utils.{ScorexLogging, Time}
-import com.wavesplatform.state.{Blockchain, ByteStr, _}
-import com.wavesplatform.state.Blockchain
 import com.wavesplatform.utx.UtxPool
 import io.netty.channel.Channel
 import io.netty.channel.group.ChannelGroup
@@ -23,6 +21,7 @@ import com.wavesplatform.transaction.{BlockchainUpdater, CheckpointService, Vali
 import scala.util.Right
 
 object BlockAppender extends ScorexLogging with Instrumented {
+
   def apply(checkpoint: CheckpointService,
             blockchainUpdater: BlockchainUpdater with Blockchain,
             time: Time,
@@ -34,8 +33,8 @@ object BlockAppender extends ScorexLogging with Instrumented {
     Task {
       measureSuccessful(
         blockProcessingTimeStats, {
-          if (blockchainUpdater.isLastBlockId(newBlock.reference)||exceptions.contains(block.uniqueId)) {
-            appendBlock(checkpoint, blockchainUpdater, utxStorage, pos, time, settings)(newBlock).map(_ => Some(blockchainUpdater.score))
+          if (blockchainUpdater.isLastBlockId(newBlock.reference)) {
+            appendBlock(checkpoint, blockchainUpdater, utxStorage, pos, time, settings, verify)(newBlock).map(_ => Some(blockchainUpdater.score))
           } else if (blockchainUpdater.contains(newBlock.uniqueId)) {
             Right(None)
           } else {

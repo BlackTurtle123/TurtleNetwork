@@ -53,7 +53,6 @@ object FunctionalitySettings {
     featureCheckBlocksPeriod = 2000,
     blocksForFeatureActivation = 1000,
     allowTemporaryNegativeUntil = 0L,
-    requireSortedTransactionsAfter = 0L,
     generationBalanceDepthFrom50To1000AfterHeight = 0,
     minimalGeneratingBalanceAfter = 0L,
     allowTransactionsFromFutureUntil = 0L,
@@ -120,7 +119,7 @@ object GenesisSettings {
   val TESTNET = GenesisSettings(
     1460678400000L,
     1478000000000L,
-    153722867L,
+    50000000000000000L,
     ByteStr.decodeBase58("5uqnLK3Z9eiot6FyYBfwUnbyid3abicQbAZjz38GQ1Q8XigQMxTK4C1zNkqS1SVw7FqSidbZKxWAKLVoEsp4nNqa").toOption,
     List(
       GenesisTransactionSettings("3My3KZgFQ3CrVHgz6vGRt8687sH4oAA1qp8", (50000000000000000L * 0.04).toLong),

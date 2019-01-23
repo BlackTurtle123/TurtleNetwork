@@ -20,7 +20,7 @@ import monix.eval.Coeval
 
 object MatcherContext {
 
-  def build(version: Version, nByte: Byte, in: Coeval[Order]): EvaluationContext = {
+  def build(version: Version, nByte: Byte, in: Coeval[Order], proofsEnabled: Boolean): EvaluationContext = {
     val baseContext = Monoid.combine(PureContext.build(version), CryptoContext.build(Global)).evaluationContext
 
     val inputEntityCoeval: Coeval[Either[String, CaseObj]] =

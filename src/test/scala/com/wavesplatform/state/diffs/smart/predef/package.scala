@@ -18,10 +18,10 @@ import shapeless.Coproduct
 package object predef {
   val chainId: Byte = 'u'
 
-  def runScript[T <: EVALUATED](script: String, version: ScriptVersion, t: In, blockchain: Blockchain, chainId: Byte): Either[String, T] = {
-    val Success(expr, _) = Parser(script)
+  def runScript[T <: EVALUATED](script: String, version: Version, t: In, blockchain: Blockchain, chainId: Byte): Either[String, T] = {
+    val Success(expr, _) = Parser.parseScript(script)
     for {
-      compileResult <- ExpressionCompilerV1(compilerContext(version), expr)
+      compileResult <- ExpressionCompilerV1(compilerContext(version, isAssetScript = false), expr)
       (typedExpr, _) = compileResult
       evalContext = BlockchainContext.build(version,
                                             chainId,

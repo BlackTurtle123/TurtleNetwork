@@ -13,19 +13,18 @@ import scala.collection.mutable.ListBuffer
 
 object EvaluatorV1 {
 
-  private def evalLetBlock(let: LET, inner: EXPR): EvalM[Any] =
+  private def evalLetBlock(let: LET, inner: EXPR): EvalM[EVALUATED] =
     for {
       ctx <- get[LoggedEvaluationContext, ExecutionError]
       blockEvaluation = evalExpr(let.value)
       lazyBlock       = LazyVal(blockEvaluation.ter(ctx), ctx.l(let.name))
-      savedVars       = ctx.ec.letDefs
-      result <- id {
+      result <- local {
         modify[LoggedEvaluationContext, ExecutionError](lets.modify(_)(_.updated(let.name, lazyBlock)))
           .flatMap(_ => evalExpr(inner))
       }
     } yield result
 
-  private def evalFuncBlock(func: FUNC, inner: EXPR): EvalM[Any] = {
+  private def evalFuncBlock(func: FUNC, inner: EXPR): EvalM[EVALUATED] = {
     val funcHeader = FunctionHeader.User(func.name)
     val function   = UserFunction(func.name, null, s"user defined function '${func.name}'", func.args.map(n => (n, null, n)): _*)(func.body)
     for {
@@ -37,11 +36,11 @@ object EvaluatorV1 {
     } yield result
   }
 
-  private def evalRef(key: String) =
+  private def evalRef(key: String): EvalM[EVALUATED] =
     get[LoggedEvaluationContext, ExecutionError] flatMap { ctx =>
       lets.get(ctx).get(key) match {
-        case Some(lzy) => liftTER[Any](lzy.value.value)
-        case None      => raiseError[LoggedEvaluationContext, ExecutionError, Any](s"A definition of '$key' not found")
+        case Some(lzy) => liftTER[EVALUATED](lzy.value.value)
+        case None      => raiseError[LoggedEvaluationContext, ExecutionError, EVALUATED](s"A definition of '$key' not found")
       }
     }
 
@@ -98,7 +97,6 @@ object EvaluatorV1 {
         )
         .getOrElse(raiseError[LoggedEvaluationContext, ExecutionError, EVALUATED](s"function '$header' not found"))
     } yield result
-
 
   def evalExpr(t: EXPR): EvalM[EVALUATED] = t match {
     case BLOCKV1(let, inner) => evalLetBlock(let, inner)

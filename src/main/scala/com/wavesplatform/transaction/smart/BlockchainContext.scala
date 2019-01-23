@@ -15,13 +15,7 @@ import shapeless._
 object BlockchainContext {
 
   type In = Transaction :+: Order :+: CNil
-  def build(version: Version,
-            nByte: Byte,
-            in: Coeval[In],
-            h: Coeval[Int],
-            blockchain: Blockchain,
-            orderEnabled: Boolean,
-            proofsEnabled: Boolean): EvaluationContext = {
+  def build(version: Version, nByte: Byte, in: Coeval[In], h: Coeval[Int], blockchain: Blockchain, isTokenContext: Boolean): EvaluationContext = {
     Monoid
       .combineAll(
         Seq(

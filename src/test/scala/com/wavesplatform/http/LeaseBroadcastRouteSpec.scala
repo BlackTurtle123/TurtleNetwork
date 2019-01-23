@@ -64,7 +64,7 @@ class LeaseBroadcastRouteSpec extends RouteSpec("/leasing/broadcast/") with Requ
         posting(lease.copy(recipient = a)) should produce(InvalidAddress)
       }
       forAll(nonPositiveLong) { fee =>
-        posting(lease.copy(fee = fee)) should produce(InsufficientFee)
+        posting(lease.copy(fee = fee)) should produce(InsufficientFee())
       }
       forAll(posNum[Long]) { quantity =>
         posting(lease.copy(amount = quantity, fee = Long.MaxValue)) should produce(OverflowError)

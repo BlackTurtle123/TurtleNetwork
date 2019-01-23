@@ -154,8 +154,8 @@ object CommonValidation {
     val allowTransactionsFromFutureByTimestamp = tx.timestamp < settings.allowTransactionsFromFutureUntil
     if (!allowTransactionsFromFutureByTimestamp && tx.timestamp - time > settings.maxTransactionTimeForwardOffset.toMillis)
       Left(Mistiming(s"""Transaction timestamp ${tx.timestamp}
-       |is more than ${settings.maxTransactionTimeForwardOffset.toMillis}ms in the future
-       |relative to block timestamp $time""".stripMargin.replaceAll("\n", " ")))
+                        |is more than ${settings.maxTransactionTimeForwardOffset.toMillis}ms in the future
+                        |relative to block timestamp $time""".stripMargin.replaceAll("\n", " ")))
     else Right(tx)
   }
 
@@ -163,8 +163,8 @@ object CommonValidation {
     prevBlockTime match {
       case Some(t) if (t - tx.timestamp) > settings.maxTransactionTimeBackOffset.toMillis =>
         Left(Mistiming(s"""Transaction timestamp ${tx.timestamp}
-         |is more than ${settings.maxTransactionTimeBackOffset.toMillis}ms in the past
-         |relative to previous block timestamp $prevBlockTime""".stripMargin.replaceAll("\n", " ")))
+                          |is more than ${settings.maxTransactionTimeBackOffset.toMillis}ms in the past
+                          |relative to previous block timestamp $prevBlockTime""".stripMargin.replaceAll("\n", " ")))
       case _ => Right(tx)
     }
 
@@ -209,7 +209,6 @@ object CommonValidation {
                 )
               } yield (Some((assetId, assetInfo)), wavesFee)
           }
-
         } yield r
 
     def isSmartToken(input: FeeInfo): Boolean = input._1.map(_._1).flatMap(blockchain.assetDescription).exists(_.script.isDefined)
@@ -225,7 +224,6 @@ object CommonValidation {
         Right { (feeAssetInfo, feeAmount + ScriptExtraFee * (1 + assetsCount)) }
       } else {
         Right { (feeAssetInfo, feeAmount + ScriptExtraFee * assetsCount) }
-
       }
     }
 
@@ -234,38 +232,21 @@ object CommonValidation {
       case _                               => 0
     }
 
-    def restFeeAfterSmartTokens(inputFee: (Option[AssetId], Long)): Either[ValidationError, (Option[AssetId], Long)] =
-      if (isSmartToken) {
-        val (feeAssetId, feeAmount) = inputFee
-        for {
-          _ <- Either.cond(feeAssetId.isEmpty, (), GenericError("Transactions with smart tokens require TN as fee"))
-          restFeeAmount = feeAmount - ScriptExtraFee
-          _ <- Either.cond(
-            restFeeAmount >= 0,
-            (),
-            InsufficientFee(s"This transaction with a smart token requires ${-restFeeAmount} additional fee")
-          )
-        } yield (feeAssetId, restFeeAmount)
-      } else Right(inputFee)
-
-    def hasSmartAccountScript: Boolean = tx match {
-      case tx: Transaction with Authorized => blockchain.accountScript(tx.sender).isDefined
-      case _                               => false
+    def feeAfterSmartAccounts(inputFee: FeeInfo): Either[ValidationError, FeeInfo] = Right {
+      val extraFee                  = smartAccountScriptsCount * ScriptExtraFee
+      val (feeAssetInfo, feeAmount) = inputFee
+      (feeAssetInfo, feeAmount + extraFee)
     }
 
-    def restFeeAfterSmartAccounts(inputFee: (Option[AssetId], Long)): Either[ValidationError, (Option[AssetId], Long)] =
-      if (hasSmartAccountScript) {
-        val (feeAssetId, feeAmount) = inputFee
-        for {
-          _ <- Either.cond(feeAssetId.isEmpty, (), GenericError("Transactions from scripted accounts require TN as fee"))
-          restFeeAmount = feeAmount - ScriptExtraFee
-          _ <- Either.cond(
-            restFeeAmount >= 0,
-            (),
-            InsufficientFee(s"Scripted account requires ${-restFeeAmount} additional fee for this transaction")
-          )
-        } yield (feeAssetId, restFeeAmount)
-      } else Right(inputFee)
+    feeAfterSponsorship(tx.assetFee._1)
+      .flatMap(feeAfterSmartTokens)
+      .flatMap(feeAfterSmartAccounts)
+      .map {
+        case (Some((assetId, assetInfo)), amountInWaves) =>
+          (Some(assetId), Sponsorship.fromWaves(amountInWaves, assetInfo.sponsorship), amountInWaves)
+        case (None, amountInWaves) => (None, amountInWaves, amountInWaves)
+      }
+  }
 
   def checkFee(blockchain: Blockchain, fs: FunctionalitySettings, height: Int, tx: Transaction): Either[ValidationError, Unit] = {
     if (height >= Sponsorship.sponsoredFeesSwitchHeight(blockchain, fs)) {
@@ -284,7 +265,6 @@ object CommonValidation {
     } else {
       Either.cond(tx.assetFee._2 > 0 || !tx.isInstanceOf[Authorized], (), GenericError(s"Fee must be positive."))
     }
-
   }
 
   def cond[A](c: Boolean)(a: A, b: A): A = if (c) a else b

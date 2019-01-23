@@ -46,7 +46,7 @@ package object validation {
   def validateName(name: Array[Byte]): Validated[Array[Byte]] = {
     Validated
       .condNel(
-        name.length >= MinAssetNameLength && name.length <= MaxAssetNameLength ,
+        name.length >= MinAssetNameLength && name.length <= MaxAssetNameLength,
         name,
         ValidationError.InvalidName
       )

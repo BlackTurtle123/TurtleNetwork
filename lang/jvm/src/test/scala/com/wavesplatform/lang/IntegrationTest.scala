@@ -7,7 +7,7 @@ import com.wavesplatform.lang.Testing._
 import com.wavesplatform.lang.Version._
 import com.wavesplatform.lang.v1.CTX
 import com.wavesplatform.lang.v1.compiler.Terms._
-import com.wavesplatform.lang.v1.compiler.Types.{CASETYPEREF, FINAL, LONG}
+import com.wavesplatform.lang.v1.compiler.Types.{FINAL, LONG}
 import com.wavesplatform.lang.v1.compiler.{ExpressionCompilerV1, Terms}
 import com.wavesplatform.lang.v1.evaluator.EvaluatorV1
 import com.wavesplatform.lang.v1.evaluator.ctx._
@@ -281,7 +281,7 @@ class IntegrationTest extends PropSpec with PropertyChecks with ScriptGen with M
         |func inc(z:Int) = {z + 1}
         |inc(0)
       """.stripMargin
-    eval[Long](script, Some(pointAInstance)) shouldBe Right(1)
+    eval[EVALUATED](script, Some(pointAInstance)) shouldBe evaluated(1)
   }
 
   property("func in func") {
@@ -294,7 +294,7 @@ class IntegrationTest extends PropSpec with PropertyChecks with ScriptGen with M
         |}
         |maxx(0,10)
       """.stripMargin
-    eval[Long](script, Some(pointAInstance)) shouldBe Right(11)
+    eval[EVALUATED](script, Some(pointAInstance)) shouldBe evaluated(11)
   }
 
   property("context won't change after inner let") {

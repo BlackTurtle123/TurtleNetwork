@@ -26,7 +26,7 @@ object BalanceDiffValidation extends ScorexLogging with Instrumented {
          val newB = oldWaves + balance
 
          if (newB < 0) {
-           Some(acc -> s"negative waves balance: $acc, old: ${oldWaves}, new: ${newB}")
+           Some(acc -> s"negative TN balance: $acc, old: ${oldWaves}, new: ${newB}")
          } else if (newB < lease.out && currentHeight > fs.allowLeasedBalanceTransferUntilHeight) {
            Some(acc -> (if (newB + lease.in - lease.out < 0) {
                           s"negative effective balance: $acc, old: ${(oldWaves, oldLease)}, new: ${(newB, lease)}"

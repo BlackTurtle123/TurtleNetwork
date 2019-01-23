@@ -7,7 +7,6 @@ import com.wavesplatform.state.{ByteStr, IntegerDataEntry}
 import com.wavesplatform.transaction.smart.script.ScriptCompiler
 import com.wavesplatform.transaction.transfer.MassTransferTransaction.Transfer
 import com.wavesplatform.transaction.transfer.TransferTransactionV2
-import play.api.libs.json.JsNumber
 import com.wavesplatform.state._
 import scala.concurrent.duration._
 

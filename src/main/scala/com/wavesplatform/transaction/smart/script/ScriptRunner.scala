@@ -19,7 +19,6 @@ import shapeless._
 
 object ScriptRunner {
 
-
   def apply(height: Int,
             in: Transaction :+: Order :+: CNil,
             blockchain: Blockchain,

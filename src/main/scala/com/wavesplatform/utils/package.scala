@@ -97,7 +97,7 @@ package object utils extends ScorexLogging {
               PureContext.build(version),
               CryptoContext.build(Global),
               WavesContext
-                .build(version, new WavesEnvironment(AddressScheme.current.chainId, Coeval(???), Coeval(???), EmptyBlockchain), false, false)
+                .build(version, new WavesEnvironment(AddressScheme.current.chainId, Coeval(???), Coeval(???), EmptyBlockchain), isTokenContext = true)
             )))
       }
       .toMap
@@ -111,7 +111,9 @@ package object utils extends ScorexLogging {
             .combineAll(Seq(
               PureContext.build(version),
               CryptoContext.build(Global),
-              WavesContext.build(version, new WavesEnvironment(AddressScheme.current.chainId, Coeval(???), Coeval(???), EmptyBlockchain), true, true)
+              WavesContext.build(version,
+                                 new WavesEnvironment(AddressScheme.current.chainId, Coeval(???), Coeval(???), EmptyBlockchain),
+                                 isTokenContext = false)
             )))
       }
       .toMap
@@ -141,9 +143,11 @@ package object utils extends ScorexLogging {
     costs.toMap
   }
 
-  def compilerContext(version: Version): CompilerContext = lazyContexts(version)().compilerContext
+  def compilerContext(version: Version, isAssetScript: Boolean): CompilerContext =
+    if (isAssetScript) lazyAssetContexts(version)().compilerContext
+    else lazyContexts(version)().compilerContext
 
-  def varNames(version: Version): Set[String] = compilerContext(version).varDefs.keySet
+  def varNames(version: Version): Set[String] = compilerContext(version, isAssetScript = false).varDefs.keySet
 
   @tailrec
   final def untilTimeout[T](timeout: FiniteDuration, delay: FiniteDuration = 100.milliseconds, onFailure: => Unit = {})(fn: => T): T = {

@@ -48,7 +48,7 @@ class ReissueTransactionV1Suite extends BaseTransactionSuite {
     nodes.waitForHeightAriseAndTxPresent(issuedAssetId)
 
     assertBadRequestAndMessage(sender.reissue(firstAddress, issuedAssetId, someAssetAmount, reissuable = true, fee = reissueFee),
-                               "negative waves balance")
+                               "negative TN balance")
     nodes.waitForHeightArise()
 
     notMiner.assertAssetBalance(firstAddress, issuedAssetId, someAssetAmount)

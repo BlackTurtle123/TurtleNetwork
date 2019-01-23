@@ -101,15 +101,15 @@ case class MatcherApiRoute(assetPairBuilder: AssetPairBuilder,
   @ApiOperation(value = "Get Order Book for a given Asset Pair", notes = "Get Order Book for a given Asset Pair", httpMethod = "GET")
   @ApiImplicitParams(
     Array(
-      new ApiImplicitParam(name = "amountAsset", value = "Amount Asset Id in Pair, or 'TN'", dataType = "string", paramType = "path"),
-      new ApiImplicitParam(name = "priceAsset", value = "Price Asset Id in Pair, or 'TN'", dataType = "string", paramType = "path"),
+      new ApiImplicitParam(name = "amountAsset", value = "Amount Asset Id in Pair, or 'WAVES'", dataType = "string", paramType = "path"),
+      new ApiImplicitParam(name = "priceAsset", value = "Price Asset Id in Pair, or 'WAVES'", dataType = "string", paramType = "path"),
       new ApiImplicitParam(name = "depth",
                            value = "Limit the number of bid/ask records returned",
                            required = false,
                            dataType = "integer",
                            paramType = "query")
     ))
-  def orderBook: Route = (path("orderbook" / Segment / Segment) & get) { (a1, a2) =>
+  def getOrderBook: Route = (path("orderbook" / AssetPairPM) & get) { p =>
     parameters('depth.as[Int].?) { depth =>
       withAssetPair(p, redirectToInverse = true) { pair =>
         complete(orderBookSnapshot.get(pair, depth))
@@ -121,13 +121,21 @@ case class MatcherApiRoute(assetPairBuilder: AssetPairBuilder,
   @ApiOperation(value = "Get Market Status", notes = "Get current market data such as last trade, best bid and ask", httpMethod = "GET")
   @ApiImplicitParams(
     Array(
-      new ApiImplicitParam(name = "amountAsset", value = "Amount Asset Id in Pair, or 'TN'", dataType = "string", paramType = "path"),
-      new ApiImplicitParam(name = "priceAsset", value = "Price Asset Id in Pair, or 'TN'", dataType = "string", paramType = "path")
+      new ApiImplicitParam(name = "amountAsset", value = "Amount Asset Id in Pair, or 'WAVES'", dataType = "string", paramType = "path"),
+      new ApiImplicitParam(name = "priceAsset", value = "Price Asset Id in Pair, or 'WAVES'", dataType = "string", paramType = "path")
     ))
   def marketStatus: Route = (path("orderbook" / AssetPairPM / "status") & get) { p =>
     withAssetPair(p, redirectToInverse = true) { pair =>
       getMarketStatus(pair).fold(complete(StatusCodes.NotFound -> Json.obj("message" -> "Invalid asset pair"))) { ms =>
-        complete(StatusCodes.OK -> ms)
+        complete(
+          StatusCodes.OK -> Json.obj(
+            "lastPrice" -> ms.last.map(_.price),
+            "lastSide"  -> ms.last.map(_.orderType.toString),
+            "bid"       -> ms.bid.map(_._1),
+            "bidAmount" -> ms.bid.map(_._2.map(_.amount).sum),
+            "ask"       -> ms.ask.map(_._1),
+            "askAmount" -> ms.ask.map(_._2.map(_.amount).sum)
+          ))
       }
     }
   }
@@ -228,24 +236,33 @@ case class MatcherApiRoute(assetPairBuilder: AssetPairBuilder,
     notes = "Cancel previously submitted order if it's not already filled completely",
     httpMethod = "POST",
     produces = "application/json",
-    consumes = "application/json")
-  @ApiImplicitParams(Array(
-    new ApiImplicitParam(name = "amountAsset", value = "Amount Asset Id in Pair, or 'TN'", dataType = "string", paramType = "path"),
-    new ApiImplicitParam(name = "priceAsset", value = "Price Asset Id in Pair, or 'TN'", dataType = "string", paramType = "path"),
-    new ApiImplicitParam(
-      name = "body",
-      value = "Json with data",
-      required = true,
-      paramType = "body",
-      dataType = "com.wavesplatform.matcher.api.CancelOrderRequest"
-    )
-  ))
-  def cancel: Route = (path("orderbook" / Segment / Segment / "cancel") & post) { (a1, a2) =>
-    withAssetPair(a1, a2) { pair =>
-      json[CancelOrderRequest] { req =>
-        (matcher ? CancelOrder(pair, req))
-          .mapTo[MatcherResponse]
-          .map(r => r.code -> r.json)
+    consumes = "application/json"
+  )
+  @ApiImplicitParams(
+    Array(
+      new ApiImplicitParam(name = "amountAsset", value = "Amount Asset Id in Pair, or 'WAVES'", dataType = "string", paramType = "path"),
+      new ApiImplicitParam(name = "priceAsset", value = "Price Asset Id in Pair, or 'WAVES'", dataType = "string", paramType = "path"),
+      new ApiImplicitParam(
+        name = "body",
+        value = "Json with data",
+        required = true,
+        paramType = "body",
+        dataType = "com.wavesplatform.matcher.api.CancelOrderRequest"
+      )
+    ))
+  def cancel: Route = (path("orderbook" / AssetPairPM / "cancel") & post) { p =>
+    withAssetPair(p) { pair =>
+      orderBook(pair).fold[Route](complete(StatusCodes.NotFound -> Json.obj("message" -> "Invalid asset pair"))) { _ =>
+        json[CancelOrderRequest] { req =>
+          if (req.isSignatureValid()) (req.orderId, req.timestamp) match {
+            case (Some(id), None) => cancelOrder(id, Some(req.sender))
+            case (None, Some(reqTimestamp)) =>
+              batchCancel(req.sender, Some(pair), reqTimestamp).andThen {
+                case Failure(exception) => log.debug(s"Error validating batch cancel request from ${req.sender.toAddress} for $pair", exception)
+              }
+            case _ => StatusCodes.BadRequest -> "Either timestamp or orderId must be provided"
+          } else InvalidSignature
+        }
       }
     }
   }
@@ -255,30 +272,24 @@ case class MatcherApiRoute(assetPairBuilder: AssetPairBuilder,
     value = "Cancel all active orders",
     httpMethod = "POST",
     produces = "application/json",
-    consumes = "application/json")
-  @ApiImplicitParams(Array(
-    new ApiImplicitParam(name = "amountAsset", value = "Amount Asset Id in Pair, or 'TN'", dataType = "string", paramType = "path"),
-    new ApiImplicitParam(name = "priceAsset", value = "Price Asset Id in Pair, or 'TN'", dataType = "string", paramType = "path"),
-    new ApiImplicitParam(
-      name = "body",
-      value = "Json with data",
-      required = true,
-      paramType = "body",
-      dataType = "com.wavesplatform.matcher.api.CancelOrderRequest"
-    )
-  ))
-  def historyDelete: Route = (path("orderbook" / Segment / Segment / "delete") & post) { (a1, a2) =>
-    withAssetPair(a1, a2) { pair =>
-      json[CancelOrderRequest] { req =>
-        if (req.isSignatureValid) {
-          (orderHistory ? DeleteOrderFromHistory(pair, req.senderPublicKey.address,
-            Base58.encode(req.orderId), NTP.correctedTime()))
-            .mapTo[MatcherResponse]
-            .map(r => r.code -> r.json)
-        } else {
-          StatusCodes.BadRequest -> Json.obj("message" -> "Incorrect signature")
-        }
-      }
+    consumes = "application/json"
+  )
+  @ApiImplicitParams(
+    Array(
+      new ApiImplicitParam(
+        name = "body",
+        value = "Json with data",
+        required = true,
+        paramType = "body",
+        dataType = "com.wavesplatform.matcher.api.CancelOrderRequest"
+      )
+    ))
+  def cancelAll: Route = (path("orderbook" / "cancel") & post) {
+    json[CancelOrderRequest] { req =>
+      if (req.isSignatureValid())
+        req.timestamp.fold[Future[ToResponseMarshallable]](Future.successful(OrderCancelRejected("Timestamp must be specified"))) { reqTimestamp =>
+          batchCancel(req.sender, None, reqTimestamp)
+        } else InvalidSignature
     }
   }
 
@@ -293,8 +304,8 @@ case class MatcherApiRoute(assetPairBuilder: AssetPairBuilder,
   )
   @ApiImplicitParams(
     Array(
-      new ApiImplicitParam(name = "amountAsset", value = "Amount Asset Id in Pair, or 'TN'", dataType = "string", paramType = "path"),
-      new ApiImplicitParam(name = "priceAsset", value = "Price Asset Id in Pair, or 'TN'", dataType = "string", paramType = "path"),
+      new ApiImplicitParam(name = "amountAsset", value = "Amount Asset Id in Pair, or 'WAVES'", dataType = "string", paramType = "path"),
+      new ApiImplicitParam(name = "priceAsset", value = "Price Asset Id in Pair, or 'WAVES'", dataType = "string", paramType = "path"),
       new ApiImplicitParam(
         name = "body",
         value = "Json with data",
@@ -303,49 +314,53 @@ case class MatcherApiRoute(assetPairBuilder: AssetPairBuilder,
         dataType = "com.wavesplatform.matcher.api.CancelOrderRequest"
       )
     ))
-  def historyDelete: Route = (path("orderbook" / Segment / Segment / "delete") & post) { (a1, a2) =>
-    withAssetPair(a1, a2) { pair =>
-      json[CancelOrderRequest] { req =>
-        if (req.isSignatureValid) {
-          (orderHistory ? DeleteOrderFromHistory(pair, req.senderPublicKey.address, Base58.encode(req.orderId), NTP.correctedTime()))
-            .mapTo[MatcherResponse]
-            .map(r => r.code -> r.json)
-        } else {
-          StatusCodes.BadRequest -> Json.obj("message" -> "Incorrect signature")
-        }
-      }
-    }
-  }
-
-  def withAssetPair(a1: String, a2: String): Directive1[AssetPair] = {
-    AssetPair.createAssetPair(a1, a2) match {
-      case Success(p) => provide(p)
-      case Failure(_) => complete(StatusCodes.BadRequest -> Json.obj("message" -> "Invalid asset pair"))
+  def historyDelete: Route = (path("orderbook" / AssetPairPM / "delete") & post) { _ =>
+    json[CancelOrderRequest] { req =>
+      req.orderId.fold[MatcherResponse](NotImplemented("Batch order deletion is not supported yet"))(OrderDeleted)
     }
   }
 
   @Path("/orderbook/{amountAsset}/{priceAsset}/publicKey/{publicKey}")
   @ApiOperation(value = "Order History by Asset Pair and Public Key",
-    notes = "Get Order History for a given Asset Pair and Public Key",
-    httpMethod = "GET")
-  @ApiImplicitParams(Array(
-    new ApiImplicitParam(name = "amountAsset", value = "Amount Asset Id in Pair, or 'TN'", dataType = "string", paramType = "path"),
-    new ApiImplicitParam(name = "priceAsset", value = "Price Asset Id in Pair, or 'TN'", dataType = "string", paramType = "path"),
-    new ApiImplicitParam(name = "publicKey", value = "Public Key", required = true, dataType = "string", paramType = "path"),
-    new ApiImplicitParam(name = "Timestamp", value = "Timestamp", required = true, dataType = "integer", paramType = "header"),
-    new ApiImplicitParam(name = "Signature", value = "Signature of [Public Key ++ Timestamp] bytes", required = true, dataType = "string", paramType = "header")
-  ))
-  def getAssetPairAndPublicKeyOrderHistory: Route = (path("orderbook" / Segment / Segment / "publicKey" / Segment) & get) { (a1, a2, publicKey) =>
-    (headerValueByName("Timestamp") & headerValueByName("Signature")) { (ts, sig) =>
-      checkGetSignature(publicKey, ts, sig) match {
-        case Success(address) =>
-          withAssetPair(a1, a2) { pair =>
-            complete((orderHistory ? GetOrderHistory(pair, address, NTP.correctedTime()))
-              .mapTo[MatcherResponse]
-              .map(r => r.code -> r.json))
-          }
-        case Failure(ex) =>
-          complete(StatusCodes.BadRequest -> Json.obj("message" -> ex.getMessage))
+                notes = "Get Order History for a given Asset Pair and Public Key",
+                httpMethod = "GET")
+  @ApiImplicitParams(
+    Array(
+      new ApiImplicitParam(name = "amountAsset", value = "Amount Asset Id in Pair, or 'WAVES'", dataType = "string", paramType = "path"),
+      new ApiImplicitParam(name = "priceAsset", value = "Price Asset Id in Pair, or 'WAVES'", dataType = "string", paramType = "path"),
+      new ApiImplicitParam(name = "publicKey", value = "Public Key", required = true, dataType = "string", paramType = "path"),
+      new ApiImplicitParam(
+        name = "activeOnly",
+        value = "Return active only orders (Accepted and PartiallyFilled)",
+        required = false,
+        dataType = "boolean",
+        paramType = "query",
+        defaultValue = "false"
+      ),
+      new ApiImplicitParam(name = "Timestamp", value = "Timestamp", required = true, dataType = "integer", paramType = "header"),
+      new ApiImplicitParam(name = "Signature",
+                           value = "Signature of [Public Key ++ Timestamp] bytes",
+                           required = true,
+                           dataType = "string",
+                           paramType = "header")
+    ))
+  def getAssetPairAndPublicKeyOrderHistory: Route = (path("orderbook" / AssetPairPM / "publicKey" / PublicKeyPM) & get) { (p, publicKey) =>
+    parameters('activeOnly.as[Boolean].?) { activeOnly =>
+      (headerValueByName("Timestamp") & headerValueByName("Signature")) { (ts, sig) =>
+        checkGetSignature(publicKey, ts, sig) match {
+          case Success(address) =>
+            withAssetPair(p, redirectToInverse = true, s"/publicKey/$publicKey") { pair =>
+              complete(
+                StatusCodes.OK -> DBUtils
+                  .ordersByAddressAndPair(db, address, pair, activeOnly.getOrElse(false), matcherSettings.maxOrdersPerRequest)
+                  .map {
+                    case (order, orderInfo) =>
+                      orderJson(order, orderInfo)
+                  })
+            }
+          case Failure(ex) =>
+            complete(StatusCodes.BadRequest -> Json.obj("message" -> ex.getMessage))
+        }
       }
     }
   }
@@ -434,15 +449,17 @@ case class MatcherApiRoute(assetPairBuilder: AssetPairBuilder,
   @ApiOperation(value = "Tradable balance for Asset Pair", notes = "Get Tradable balance for the given Asset Pair", httpMethod = "GET")
   @ApiImplicitParams(
     Array(
-      new ApiImplicitParam(name = "amountAsset", value = "Amount Asset Id in Pair, or 'TN'", dataType = "string", paramType = "path"),
-      new ApiImplicitParam(name = "priceAsset", value = "Price Asset Id in Pair, or 'TN'", dataType = "string", paramType = "path"),
+      new ApiImplicitParam(name = "amountAsset", value = "Amount Asset Id in Pair, or 'WAVES'", dataType = "string", paramType = "path"),
+      new ApiImplicitParam(name = "priceAsset", value = "Price Asset Id in Pair, or 'WAVES'", dataType = "string", paramType = "path"),
       new ApiImplicitParam(name = "address", value = "Account Address", required = true, dataType = "string", paramType = "path")
     ))
-  def getTradableBalance: Route = (path("orderbook" / Segment / Segment / "tradableBalance" / Segment) & get) { (a1, a2, address) =>
-    withAssetPair(a1, a2) { pair =>
-      complete((orderHistory ? GetTradableBalance(pair, address, NTP.correctedTime()))
-        .mapTo[MatcherResponse]
-        .map(r => r.code -> r.json))
+  def getTradableBalance: Route = (path("orderbook" / AssetPairPM / "tradableBalance" / AddressPM) & get) { (pair, address) =>
+    withAssetPair(pair, redirectToInverse = true, s"/tradableBalance/$address") { pair =>
+      complete(
+        StatusCodes.OK -> Json.obj(
+          pair.amountAssetStr -> orderValidator.tradableBalance(AssetAcc(address, pair.amountAsset)),
+          pair.priceAssetStr  -> orderValidator.tradableBalance(AssetAcc(address, pair.priceAsset))
+        ))
     }
   }
 
@@ -472,19 +489,16 @@ case class MatcherApiRoute(assetPairBuilder: AssetPairBuilder,
   }
 
   @Path("/orderbook/{amountAsset}/{priceAsset}/{orderId}")
-
   @ApiOperation(value = "Order Status", notes = "Get Order status for a given Asset Pair during the last 30 days", httpMethod = "GET")
   @ApiImplicitParams(
     Array(
-      new ApiImplicitParam(name = "amountAsset", value = "Amount Asset Id in Pair, or 'TN'", dataType = "string", paramType = "path"),
-      new ApiImplicitParam(name = "priceAsset", value = "Price Asset Id in Pair, or 'TN'", dataType = "string", paramType = "path"),
+      new ApiImplicitParam(name = "amountAsset", value = "Amount Asset Id in Pair, or 'WAVES'", dataType = "string", paramType = "path"),
+      new ApiImplicitParam(name = "priceAsset", value = "Price Asset Id in Pair, or 'WAVES'", dataType = "string", paramType = "path"),
       new ApiImplicitParam(name = "orderId", value = "Order Id", required = true, dataType = "string", paramType = "path")
     ))
-  def orderStatus: Route = (path("orderbook" / Segment / Segment / Segment) & get) { (a1, a2, orderId) =>
-    withAssetPair(a1, a2) { pair =>
-      complete((orderHistory ? GetOrderStatus(pair, orderId, NTP.correctedTime()))
-        .mapTo[MatcherResponse]
-        .map(r => r.code -> r.json))
+  def orderStatus: Route = (path("orderbook" / AssetPairPM / ByteStrPM) & get) { (p, orderId) =>
+    withAssetPair(p, redirectToInverse = true, s"/$orderId") { _ =>
+      complete(StatusCodes.OK -> DBUtils.orderInfo(db, orderId).status.json)
     }
   }
 
@@ -514,14 +528,14 @@ case class MatcherApiRoute(assetPairBuilder: AssetPairBuilder,
   @ApiOperation(value = "Remove Order Book for a given Asset Pair", notes = "Remove Order Book for a given Asset Pair", httpMethod = "DELETE")
   @ApiImplicitParams(
     Array(
-      new ApiImplicitParam(name = "amountAsset", value = "Amount Asset Id in Pair, or 'TN'", dataType = "string", paramType = "path"),
-      new ApiImplicitParam(name = "priceAsset", value = "Price Asset Id in Pair, or 'TN'", dataType = "string", paramType = "path")
+      new ApiImplicitParam(name = "amountAsset", value = "Amount Asset Id in Pair, or 'WAVES'", dataType = "string", paramType = "path"),
+      new ApiImplicitParam(name = "priceAsset", value = "Price Asset Id in Pair, or 'WAVES'", dataType = "string", paramType = "path")
     ))
-  def orderBookDelete: Route = (path("orderbook" / Segment / Segment) & delete & withAuth) { (a1, a2) =>
-    withAssetPair(a1, a2) { pair =>
-      complete((matcher ? DeleteOrderBookRequest(pair))
-        .mapTo[MatcherResponse]
-        .map(r => r.code -> r.json))
+  def orderBookDelete: Route = (path("orderbook" / AssetPairPM) & delete & withAuth) { p =>
+    withAssetPair(p) { pair =>
+      complete((matcher ? DeleteOrderBookRequest(pair)).map { _ =>
+        GetOrderBookResponse(time.correctedTime(), pair, Seq(), Seq()).toHttpResponse
+      })
     }
   }
 

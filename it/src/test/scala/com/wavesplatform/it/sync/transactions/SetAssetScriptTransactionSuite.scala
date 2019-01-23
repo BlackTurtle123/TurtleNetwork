@@ -142,7 +142,7 @@ class SetAssetScriptTransactionSuite extends BaseTransactionSuite {
 
   test("cannot transact without having enough waves") {
     val (balance, eff) = notMiner.accountBalances(firstAddress)
-    assertBadRequestAndResponse(sender.setAssetScript(assetWScript, firstAddress, balance + 1, Some(scriptBase64)), "negative waves balance")
+    assertBadRequestAndResponse(sender.setAssetScript(assetWScript, firstAddress, balance + 1, Some(scriptBase64)), "negative TN balance")
     nodes.waitForHeightArise()
     notMiner.assertBalances(firstAddress, balance, eff)
 
