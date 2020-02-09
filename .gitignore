@@ -22,7 +22,8 @@ target
 
 # local settings
 localsettings.json
-local.conf
+*local.conf
+waves_logback.xml
 
 # Text files
 *.txt
@@ -33,11 +34,7 @@ local.conf
 # standalone docker
 Dockerfile
 
-# logs
-*.log
-
 package
 !src/package
 native
 
-genesis.conf

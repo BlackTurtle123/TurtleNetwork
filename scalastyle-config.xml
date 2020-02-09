@@ -41,7 +41,7 @@
             <parameter name="maxParameters"><![CDATA[15]]></parameter>
         </parameters>
     </check>
-    <check level="warning" class="org.scalastyle.scalariform.MagicNumberChecker" enabled="true">
+    <check level="warning" class="org.scalastyle.scalariform.MagicNumberChecker" enabled="false">
         <parameters>
             <parameter name="ignore"><![CDATA[-1,0,1,2,3]]></parameter>
         </parameters>
@@ -91,13 +91,13 @@
     </check>
     <check level="warning" class="org.scalastyle.scalariform.NumberOfMethodsInTypeChecker" enabled="true">
         <parameters>
-            <parameter name="maxMethods"><![CDATA[30]]></parameter>
+            <parameter name="maxMethods"><![CDATA[100]]></parameter>
         </parameters>
     </check>
     <check level="warning" class="org.scalastyle.scalariform.PublicMethodsHaveTypeChecker" enabled="true"></check>
     <check level="warning" class="org.scalastyle.file.NewLineAtEofChecker" enabled="true"></check>
     <check level="warning" class="org.scalastyle.file.NoNewLineAtEofChecker" enabled="false"></check>
-    <check level="warning" class="org.scalastyle.scalariform.TodoCommentChecker" enabled="true">
+    <check level="warning" class="org.scalastyle.scalariform.TodoCommentChecker" enabled="false">
         <parameters>
             <parameter name="words">TODO|FIXME|todo|fixme|bug|BUG</parameter>
         </parameters>

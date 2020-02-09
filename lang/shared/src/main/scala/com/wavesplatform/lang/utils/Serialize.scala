@@ -5,8 +5,8 @@ import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 
 import com.wavesplatform.lang.v1.FunctionHeader
+import com.wavesplatform.lang.v1.FunctionHeader.{Native, User}
 import com.wavesplatform.lang.v1.Serde.{FH_NATIVE, FH_USER}
-import scodec.bits.ByteVector
 
 object Serialize {
   implicit class ByteBufferOps(val self: ByteBuffer) extends AnyVal {
@@ -20,13 +20,11 @@ object Serialize {
       bytes
     }
 
-    def getByteVector: ByteVector = ByteVector(getBytes)
-
     def getString: String = new String(getBytes, StandardCharsets.UTF_8)
 
     def getFunctionHeader: FunctionHeader = self.get() match {
-      case FH_NATIVE => FunctionHeader.Native(self.getShort)
-      case FH_USER   => FunctionHeader.User(getString)
+      case FH_NATIVE => Native(self.getShort)
+      case FH_USER   => User(getString)
       case x         => throw new RuntimeException(s"Unknown function header type: $x")
     }
   }
@@ -54,9 +52,9 @@ object Serialize {
       case FunctionHeader.Native(id) =>
         self.write(FH_NATIVE)
         self.writeShort(id)
-      case FunctionHeader.User(name) =>
+      case FunctionHeader.User(internalName, _) =>
         self.write(FH_USER)
-        self.writeString(name)
+        self.writeString(internalName)
     }
   }
 }

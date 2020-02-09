@@ -49,11 +49,11 @@ object CompilationError {
   }
 
   final case class BadFunctionSignatureSameArgNames(start: Int, end: Int, name: String) extends CompilationError {
-    val message = s"Function'$name' declared with duplicating argument names"
+    val message = s"Function '$name' declared with duplicating argument names"
   }
 
   final case class FunctionNotFound(start: Int, end: Int, name: String, argTypes: List[String]) extends CompilationError {
-    val message = s"Can't find a function '$name'(${argTypes.mkString(", ")})"
+    val message = s"Can't find a function '$name'(${argTypes.mkString(", ")}) or it is @Callable"
   }
 
   final case class OverloadNotFound(start: Int, end: Int, name: String, argTypes: List[String]) extends CompilationError {
@@ -72,12 +72,32 @@ object CompilationError {
   final case class WrongArgumentsNumber(start: Int, end: Int, name: String, required: Int, found: Int) extends CompilationError {
     val message = s"Function '$name' requires $required arguments, but $found are provided"
   }
+  final case class WrongArgumentType(start: Int, end: Int, funcName: String, typeName: String, required: List[String]) extends CompilationError {
+    val message = s"Unexpected argument type in function '$funcName', required: (${required.mkString(", ")}), but $typeName type found"
+  }
   final case class UnexpectedType(start: Int, end: Int, required: String, found: String) extends CompilationError {
     val message = s"Unexpected type, required: $required, but $found found"
   }
-  final case class TypeNotFound(start: Int, end: Int, name: String) extends CompilationError {
-    val message = s"Undefined type: `$name`"
+  final case class TypeNotFound(
+                                 start:         Int,
+                                 end:           Int,
+                                 name:          String,
+                                 expectedTypes: List[String],
+                                 varName:       Option[String]
+                               ) extends CompilationError {
+    val message = {
+      val varStr = varName.fold("")(v => s" of variable `$v`")
+      val expectedTypesStr =
+        if (expectedTypes.nonEmpty) s", expected: ${expectedTypes.mkString(", ")}"
+        else ""
+      s"Undefined type: `$name`" + varStr + expectedTypesStr
+    }
   }
+
+  final case class GenericTypeNotFound(start: Int, end: Int, t: String) extends CompilationError {
+    val message = s"Undefined generic type `$t`"
+  }
+
   final case class FieldNotFound(start: Int, end: Int, name: String, typeName: String) extends CompilationError {
     val message = s"Undefined field `$name` of variable of type `$typeName`"
   }

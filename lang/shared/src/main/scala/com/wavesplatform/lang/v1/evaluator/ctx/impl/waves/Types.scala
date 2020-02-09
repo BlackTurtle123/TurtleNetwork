@@ -1,51 +1,136 @@
 package com.wavesplatform.lang.v1.evaluator.ctx.impl.waves
 
-import com.wavesplatform.lang.Version
-import com.wavesplatform.lang.Version.Version
+import com.wavesplatform.lang.directives.values.{StdLibVersion, V3}
 import com.wavesplatform.lang.v1.compiler.Types._
-import com.wavesplatform.lang.v1.evaluator.ctx.impl._
-import com.wavesplatform.lang.v1.evaluator.ctx.{CaseType, DefinedType, UnionType}
 
 object Types {
 
-  val addressType        = CaseType("Address", List("bytes" -> BYTEVECTOR))
-  val aliasType          = CaseType("Alias", List("alias" -> STRING))
-  val addressOrAliasType = UNION(addressType.typeRef, aliasType.typeRef)
+  lazy val addressType        = CASETYPEREF("Address", List("bytes" -> BYTESTR))
+  lazy val aliasType          = CASETYPEREF("Alias", List("alias" -> STRING))
+  lazy val addressOrAliasType = UNION(addressType, aliasType)
 
-  val transfer         = CaseType("Transfer", List("recipient" -> addressOrAliasType, "amount" -> LONG))
-  val optionByteVector = UNION(BYTEVECTOR, UNIT)
+  val assetType = CASETYPEREF(
+    "Asset",
+    List(
+      "id"              -> BYTESTR,
+      "quantity"        -> LONG,
+      "decimals"        -> LONG,
+      "issuer"          -> addressType,
+      "issuerPublicKey" -> BYTESTR,
+      "reissuable"      -> BOOLEAN,
+      "scripted"        -> BOOLEAN,
+      "sponsored"       -> BOOLEAN
+    )
+  )
 
-  val optionAddress        = UNION(addressType.typeRef, UNIT)
-  val optionLong           = UNION(LONG, UNIT)
-  val listByteVector: LIST = LIST(BYTEVECTOR)
-  val listTransfers        = LIST(transfer.typeRef)
-  val paymentType          = CaseType("AttachedPayment", List("asset" -> optionByteVector, "amount" -> LONG))
+  val blockInfo = CASETYPEREF(
+    "BlockInfo",
+    List(
+      "timestamp"           -> LONG,
+      "height"              -> LONG,
+      "baseTarget"          -> LONG,
+      "generationSignature" -> BYTESTR,
+      "generator"           -> addressType,
+      "generatorPublicKey"  -> BYTESTR
+    )
+  )
 
-  val optionPayment = UNION(paymentType.typeRef, UNIT)
+  val optionAsset = UNION(assetType, UNIT)
 
-  val invocationType = CaseType("Invocation", List("caller" -> addressType.typeRef, "contractAddress" -> addressType.typeRef, "payment" -> optionPayment))
+  val transfer = CASETYPEREF("Transfer", List("recipient" -> addressOrAliasType, "amount" -> LONG))
+
+  val optionAddress = UNION(addressType, UNIT)
+  val listTransfers = LIST(transfer)
+  val paymentType   = CASETYPEREF("AttachedPayment", List("assetId" -> optionByteVector, "amount" -> LONG))
+
+  val optionPayment = UNION(paymentType, UNIT)
+
+  lazy val verifierInput = UNION.create(
+    buildOrderType(true) :: buildActiveTransactionTypes(true, V3),
+    Some("VerifierInput")
+  )
+
+  val invocationType =
+    CASETYPEREF(
+      "Invocation",
+      List(
+        "caller"          -> addressType,
+        "callerPublicKey" -> BYTESTR,
+        "payment"         -> optionPayment,
+        "transactionId"   -> BYTESTR,
+        "fee"             -> LONG,
+        "feeAssetId"      -> optionByteVector
+      )
+    )
+
+  private val dataEntryValueType = UNION(LONG, BOOLEAN, BYTESTR, STRING)
+
+  val dataEntryType = CASETYPEREF("DataEntry", List("key" -> STRING, "value" -> dataEntryValueType))
+
+  val writeSetType =
+    CASETYPEREF(
+      FieldNames.WriteSet,
+      List(FieldNames.Data -> LIST(dataEntryType))
+    )
+
+  private val scriptTransfer =
+    CASETYPEREF(
+      FieldNames.ScriptTransfer,
+      List("recipient" -> addressOrAliasType, "amount" -> LONG, "asset" -> optionByteVector)
+    )
+
+  val scriptTransferSetType =
+    CASETYPEREF(
+      FieldNames.TransferSet,
+      List(FieldNames.Transfers -> LIST(scriptTransfer))
+    )
+
+  val scriptResultType =
+    CASETYPEREF(
+      FieldNames.ScriptResult,
+      List(FieldNames.ScriptWriteSet -> writeSetType, FieldNames.ScriptTransferSet -> scriptTransferSetType)
+    )
+
+  val dAppTypes = List(
+    writeSetType,
+    paymentType,
+    scriptTransfer,
+    scriptTransferSetType,
+    scriptResultType,
+    invocationType,
+    assetType,
+    blockInfo
+  )
 
   private val header = List(
-    "id"        -> BYTEVECTOR,
+    "id"        -> BYTESTR,
     "fee"       -> LONG,
     "timestamp" -> LONG,
     "version"   -> LONG,
   )
-  private val proven = List(
-    "sender"          -> addressType.typeRef,
-    "senderPublicKey" -> BYTEVECTOR,
-    "bodyBytes"       -> BYTEVECTOR
+  private lazy val proven = List(
+    "sender"          -> addressType,
+    "senderPublicKey" -> BYTESTR,
+    "bodyBytes"       -> BYTESTR
   )
 
   private val proofs = "proofs" -> listByteVector
 
-  val genesisTransactionType = CaseType(
+  val genesisTransactionType = CASETYPEREF(
     "GenesisTransaction",
     List("amount" -> LONG, "recipient" -> addressOrAliasType) ++ header
   )
 
+  def anyTransactionType(proofsEnabled: Boolean, version: StdLibVersion): UNION =
+    UNION(
+      buildObsoleteTransactionTypes(proofsEnabled) ++ buildActiveTransactionTypes(proofsEnabled, version)
+    )
+
+  def txByIdReturnType(proofsEnabled: Boolean, version: StdLibVersion): UNION =
+    UNION.create(UNIT +: anyTransactionType(proofsEnabled, version).typeList)
+
   def buildTransferTransactionType(proofsEnabled: Boolean) = {
-    CaseType(
+    CASETYPEREF(
       "TransferTransaction",
       addProofsIfNeeded(
         List(
@@ -53,7 +138,7 @@ object Types {
           "amount"     -> LONG,
           "assetId"    -> optionByteVector,
           "recipient"  -> addressOrAliasType,
-          "attachment" -> BYTEVECTOR
+          "attachment" -> BYTESTR
         ) ++ header ++ proven,
         proofsEnabled
       )
@@ -65,13 +150,13 @@ object Types {
     else commonFields
   }
 
-  def buildIssueTransactionType(proofsEnabled: Boolean) = CaseType(
+  def buildIssueTransactionType(proofsEnabled: Boolean) = CASETYPEREF(
     "IssueTransaction",
     addProofsIfNeeded(
       List(
         "quantity"    -> LONG,
-        "name"        -> BYTEVECTOR,
-        "description" -> BYTEVECTOR,
+        "name"        -> BYTESTR,
+        "description" -> BYTESTR,
         "reissuable"  -> BOOLEAN,
         "decimals"    -> LONG,
         "script"      -> optionByteVector
@@ -80,52 +165,55 @@ object Types {
     )
   )
 
-  def buildContractInvokationTransactionType(proofsEnabled: Boolean) = CaseType(
-    "ContractInvocationTransaction",
+  def buildInvokeScriptTransactionType(proofsEnabled: Boolean) = CASETYPEREF(
+    "InvokeScriptTransaction",
     addProofsIfNeeded(
       List(
-        "contractAddress" -> addressType.typeRef,
-        "paymentInfo"     -> optionPayment
+        "dApp"       -> addressOrAliasType,
+        "payment"    -> optionPayment,
+        "feeAssetId" -> optionByteVector,
+        "function"   -> STRING,
+        "args"       -> LIST(UNION(LONG, STRING, BOOLEAN, BYTESTR))
       ) ++ header ++ proven,
       proofsEnabled
     )
   )
 
-  def buildReissueTransactionType(proofsEnabled: Boolean) = CaseType(
+  def buildReissueTransactionType(proofsEnabled: Boolean) = CASETYPEREF(
     "ReissueTransaction",
     addProofsIfNeeded(
       List(
         "quantity"   -> LONG,
-        "assetId"    -> BYTEVECTOR,
+        "assetId"    -> BYTESTR,
         "reissuable" -> BOOLEAN,
       ) ++ header ++ proven,
       proofsEnabled
     )
   )
 
-  def buildBurnTransactionType(proofsEnabled: Boolean) = CaseType(
+  def buildBurnTransactionType(proofsEnabled: Boolean) = CASETYPEREF(
     "BurnTransaction",
     addProofsIfNeeded(
       List(
         "quantity" -> LONG,
-        "assetId"  -> BYTEVECTOR
+        "assetId"  -> BYTESTR
       ) ++ header ++ proven,
       proofsEnabled
     )
   )
 
-  def buildSetAssetScriptTransactionType(proofsEnabled: Boolean) = CaseType(
+  def buildSetAssetScriptTransactionType(proofsEnabled: Boolean) = CASETYPEREF(
     "SetAssetScriptTransaction",
     addProofsIfNeeded(
       List(
         "script"  -> optionByteVector,
-        "assetId" -> BYTEVECTOR
+        "assetId" -> BYTESTR
       ) ++ header ++ proven,
       proofsEnabled
     )
   )
 
-  def buildLeaseTransactionType(proofsEnabled: Boolean) = CaseType(
+  def buildLeaseTransactionType(proofsEnabled: Boolean) = CASETYPEREF(
     "LeaseTransaction",
     addProofsIfNeeded(
       List(
@@ -136,17 +224,17 @@ object Types {
     )
   )
 
-  def buildLeaseCancelTransactionType(proofsEnabled: Boolean) = CaseType(
+  def buildLeaseCancelTransactionType(proofsEnabled: Boolean) = CASETYPEREF(
     "LeaseCancelTransaction",
     addProofsIfNeeded(
       List(
-        "leaseId" -> BYTEVECTOR,
+        "leaseId" -> BYTESTR,
       ) ++ header ++ proven,
       proofsEnabled
     )
   )
 
-  def buildCreateAliasTransactionType(proofsEnabled: Boolean) = CaseType(
+  def buildCreateAliasTransactionType(proofsEnabled: Boolean) = CASETYPEREF(
     "CreateAliasTransaction",
     addProofsIfNeeded(
       List(
@@ -157,7 +245,7 @@ object Types {
   )
 
   def buildPaymentTransactionType(proofsEnabled: Boolean) = {
-    CaseType(
+    CASETYPEREF(
       "PaymentTransaction",
       addProofsIfNeeded(
         List(
@@ -169,49 +257,50 @@ object Types {
     )
   }
 
-  def buildSponsorFeeTransactionType(proofsEnabled: Boolean) = CaseType(
+  def buildSponsorFeeTransactionType(proofsEnabled: Boolean) = CASETYPEREF(
     "SponsorFeeTransaction",
     addProofsIfNeeded(
       List(
-        "assetId"              -> BYTEVECTOR,
+        "assetId"              -> BYTESTR,
         "minSponsoredAssetFee" -> optionLong
       ) ++ header ++ proven,
       proofsEnabled
     )
   )
 
-  val buyType  = CaseType("Buy", List.empty)
-  val sellType = CaseType("Sell", List.empty)
+  val buyType  = CASETYPEREF("Buy", List.empty)
+  val sellType = CASETYPEREF("Sell", List.empty)
 
-  val ordTypeType = UNION(buyType.typeRef, sellType.typeRef)
+  val ordTypeType = UNION(buyType, sellType)
 
-  val assetPairType = CaseType("AssetPair", List("amountAsset" -> optionByteVector, "priceAsset" -> optionByteVector))
+  val assetPairType = CASETYPEREF("AssetPair", List("amountAsset" -> optionByteVector, "priceAsset" -> optionByteVector))
 
   def buildOrderType(proofsEnabled: Boolean) = {
-    CaseType(
+    CASETYPEREF(
       "Order",
       addProofsIfNeeded(
         List(
-          "id"               -> BYTEVECTOR,
-          "matcherPublicKey" -> BYTEVECTOR,
-          "assetPair"        -> assetPairType.typeRef,
-          "orderType"        -> ordTypeType,
-          "price"            -> LONG,
-          "amount"           -> LONG,
-          "timestamp"        -> LONG,
-          "expiration"       -> LONG,
-          "matcherFee"       -> LONG
+          "id"                -> BYTESTR,
+          "matcherPublicKey"  -> BYTESTR,
+          "assetPair"         -> assetPairType,
+          "orderType"         -> ordTypeType,
+          "price"             -> LONG,
+          "amount"            -> LONG,
+          "timestamp"         -> LONG,
+          "expiration"        -> LONG,
+          "matcherFee"        -> LONG,
+          "matcherFeeAssetId" -> optionByteVector
         ) ++ proven,
         proofsEnabled
       )
     )
   }
-  def buildExchangeTransactionType(proofsEnabled: Boolean) = CaseType(
+  def buildExchangeTransactionType(proofsEnabled: Boolean) = CASETYPEREF(
     "ExchangeTransaction",
     addProofsIfNeeded(
       List(
-        "buyOrder"       -> buildOrderType(proofsEnabled).typeRef,
-        "sellOrder"      -> buildOrderType(proofsEnabled).typeRef,
+        "buyOrder"       -> buildOrderType(proofsEnabled),
+        "sellOrder"      -> buildOrderType(proofsEnabled),
         "price"          -> LONG,
         "amount"         -> LONG,
         "buyMatcherFee"  -> LONG,
@@ -221,15 +310,13 @@ object Types {
     )
   )
 
-  private val dataEntryValueType = UNION(LONG, BOOLEAN, BYTEVECTOR, STRING)
-  val dataEntryType              = CaseType("DataEntry", List("key" -> STRING, "value" -> dataEntryValueType))
 
-  def buildDataTransactionType(proofsEnabled: Boolean) = CaseType(
+  def buildDataTransactionType(proofsEnabled: Boolean) = CASETYPEREF(
     "DataTransaction",
-    addProofsIfNeeded(List("data" -> LIST(dataEntryType.typeRef)) ++ header ++ proven, proofsEnabled)
+    addProofsIfNeeded(List("data" -> LIST(dataEntryType)) ++ header ++ proven, proofsEnabled)
   )
 
-  def buildMassTransferTransactionType(proofsEnabled: Boolean) = CaseType(
+  def buildMassTransferTransactionType(proofsEnabled: Boolean) = CASETYPEREF(
     "MassTransferTransaction",
     addProofsIfNeeded(
       List(
@@ -238,13 +325,13 @@ object Types {
         "totalAmount"   -> LONG,
         "transfers"     -> listTransfers,
         "transferCount" -> LONG,
-        "attachment"    -> BYTEVECTOR
+        "attachment"    -> BYTESTR
       ) ++ header ++ proven,
       proofsEnabled
     )
   )
 
-  def buildSetScriptTransactionType(proofsEnabled: Boolean) = CaseType(
+  def buildSetScriptTransactionType(proofsEnabled: Boolean) = CASETYPEREF(
     "SetScriptTransaction",
     addProofsIfNeeded(
       List(
@@ -254,21 +341,22 @@ object Types {
     )
   )
 
-  def buildObsoleteTransactionTypes(proofsEnabled: Boolean): List[CaseType] = {
+  def buildObsoleteTransactionTypes(proofsEnabled: Boolean): List[CASETYPEREF] = {
     List(genesisTransactionType, buildPaymentTransactionType(proofsEnabled))
   }
 
-  def buildAssetSupportedTransactions(proofsEnabled: Boolean) = List(
-    buildReissueTransactionType(proofsEnabled),
-    buildBurnTransactionType(proofsEnabled),
-    buildMassTransferTransactionType(proofsEnabled),
-    buildExchangeTransactionType(proofsEnabled),
-    buildTransferTransactionType(proofsEnabled),
-    buildSetAssetScriptTransactionType(proofsEnabled),
-  )
+  def buildAssetSupportedTransactions(proofsEnabled: Boolean, v: StdLibVersion) =
+    List(
+      buildReissueTransactionType(proofsEnabled),
+      buildBurnTransactionType(proofsEnabled),
+      buildMassTransferTransactionType(proofsEnabled),
+      buildExchangeTransactionType(proofsEnabled),
+      buildTransferTransactionType(proofsEnabled),
+      buildSetAssetScriptTransactionType(proofsEnabled)
+    ) ++ (if (v == V3) List(buildInvokeScriptTransactionType(proofsEnabled)) else List.empty)
 
-  def buildActiveTransactionTypes(proofsEnabled: Boolean, v: Version): List[CaseType] = {
-    buildAssetSupportedTransactions(proofsEnabled) ++
+  def buildActiveTransactionTypes(proofsEnabled: Boolean, v: StdLibVersion): List[CASETYPEREF] = {
+    buildAssetSupportedTransactions(proofsEnabled, v) ++
       List(
         buildIssueTransactionType(proofsEnabled),
         buildLeaseTransactionType(proofsEnabled),
@@ -277,15 +365,14 @@ object Types {
         buildSetScriptTransactionType(proofsEnabled),
         buildSponsorFeeTransactionType(proofsEnabled),
         buildDataTransactionType(proofsEnabled)
-      ) ++ (if (v == Version.V3) List(buildContractInvokationTransactionType(proofsEnabled)) else List.empty)
+      )
   }
 
-  def buildWavesTypes(proofsEnabled: Boolean, v: Version): Seq[DefinedType] = {
-
-    val activeTxTypes                    = buildActiveTransactionTypes(proofsEnabled, v)
-    val obsoleteTxTypes                  = buildObsoleteTransactionTypes(proofsEnabled)
-    val transactionsCommonType           = UnionType("Transaction", activeTxTypes.map(_.typeRef))
-    val transactionTypes: List[CaseType] = obsoleteTxTypes ++ activeTxTypes
+  def buildWavesTypes(proofsEnabled: Boolean, v: StdLibVersion): Seq[FINAL] = {
+    val activeTxTypes                       = buildActiveTransactionTypes(proofsEnabled, v)
+    val obsoleteTxTypes                     = buildObsoleteTransactionTypes(proofsEnabled)
+    val transactionsCommonType              = UNION.create(activeTxTypes, Some("Transaction"))
+    val transactionTypes: List[CASETYPEREF] = obsoleteTxTypes ++ activeTxTypes
 
     Seq(
       addressType,
