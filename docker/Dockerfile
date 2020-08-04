@@ -4,6 +4,7 @@ ARG WAVES_VERSION="latest"
 ARG BRANCH="version-0.17.x"
 ARG DEB_PACKAGE_NETWORKS
 
+
 RUN                                                                             \
 {                                                                               \
     WAVES_VERSION=$WAVES_VERSION                                            &&  \
@@ -60,8 +61,13 @@ RUN                                                                             
     done                                                                        \
 ;}
 
+WORKDIR /home
+
+ADD https://github.com/TurtleNetwork/dex/releases/download/v1.2.1/tn-dex-extension-1.2.1.zip .
+RUN unzip tn-dex-extension-1.2.1.zip
+
 FROM openjdk:11-jre-slim
-ARG WAVES_VERSION="latest"
+ARG WAVES_VERSION="latest".jar
 ARG WAVES_LOG_LEVEL="DEBUG"
 ARG WAVES_HEAP_SIZE="2g"
 ARG WAVES_NETWORK="mainnet"
@@ -73,18 +79,21 @@ ENV WAVES_NETWORK=$WAVES_NETWORK
 
 COPY --from=builder /TN/node/target/TN-all-*.jar /usr/share/TN/lib/
 COPY --from=builder /TN/node/TN-*.conf /usr/share/TN/conf/
-COPY entrypoint.sh /usr/share/TN/bin/
+COPY entrypoint.sh /bin/
+COPY --from=builder /home/lib/ /usr/share/TN/lib/
 
 RUN groupadd -g 143 TN                                                   &&  \
     useradd -d /var/lib/TN -g 143 -u 143 -s /bin/bash -M TN           &&  \
     mkdir -p /var/lib/TN /etc/TN                                      &&  \
     chown -R 143:143 /var/lib/TN /usr/share/TN /etc/TN             &&  \
-    chmod -R 755 /var/lib/TN /usr/share/TN /etc/TN                 &&  \
+    chmod -R 777 /var/lib/TN /usr/share/TN /etc/TN                 &&  \
     ln -fs /var/lib/TN/log /var/log/TN
 
+RUN apt-get -y update && apt-get -y install vim
+
 WORKDIR /var/lib/TN
-EXPOSE 6861 6860 6560 6862
+EXPOSE 6861 6860 6560 6862 6887
 
 USER TN
 VOLUME /var/lib/TN
-ENTRYPOINT ["/usr/share/TN/bin/entrypoint.sh"]
+ENTRYPOINT ["/bin/entrypoint.sh"]

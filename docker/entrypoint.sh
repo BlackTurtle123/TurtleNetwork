@@ -42,5 +42,4 @@ java -Dlogback.stdout.level=${WAVES_LOG_LEVEL} \
 	-Dlogback.file.directory=/var/log/TN \
 	-Dconfig.override_with_env_vars=true \
 	${JAVA_OPTS} \
-	-jar /usr/share/TN/lib/TN-all-${WAVES_VERSION}.jar /etc/TN/TN.conf
-
+	-cp "/usr/share/TN/lib/*" com.wavesplatform.Application /etc/TN/TN.conf
