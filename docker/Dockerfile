@@ -63,9 +63,6 @@ RUN                                                                             
 
 WORKDIR /home
 
-ADD https://github.com/TurtleNetwork/dex/releases/download/v1.2.1/tn-dex-extension-1.2.1.zip .
-RUN unzip tn-dex-extension-1.2.1.zip
-
 FROM openjdk:11-jre-slim
 ARG WAVES_VERSION="latest".jar
 ARG WAVES_LOG_LEVEL="DEBUG"
